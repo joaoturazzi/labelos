@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { X, ExternalLink } from "lucide-react";
-import { AudioPlayer } from "./audio-player";
+import { WaveformPlayer } from "./waveform-player";
 import { useGlobalPlayer } from "./global-player";
 import { PipelineTracker } from "./pipeline-tracker";
 
@@ -234,7 +234,7 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
             <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-2">
               Player
             </p>
-            <AudioPlayer
+            <WaveformPlayer
               url={sub.audioFileUrl}
               trackTitle={sub.trackTitle}
               artistName={sub.artistName}
