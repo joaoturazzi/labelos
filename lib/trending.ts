@@ -1,43 +1,20 @@
 import { db } from "@/db";
 import { trendingTracks } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { runApifyActor, getApifyDataset } from "./apify";
-import { getSpotifyPlaylistTracks } from "./spotify";
+import { runApifyActor, APIFY_ACTORS } from "./apify";
 
-async function waitForRun(runId: string): Promise<string> {
-  const token = process.env.APIFY_API_KEY;
-  for (let i = 0; i < 24; i++) {
-    await new Promise((r) => setTimeout(r, 5000));
-    const res = await fetch(
-      `https://api.apify.com/v2/actor-runs/${runId}?token=${token}`
-    );
-    if (!res.ok) continue;
-    const data = await res.json();
-    if (data.data?.status === "SUCCEEDED") {
-      return data.data.defaultDatasetId;
-    }
-    if (data.data?.status === "FAILED" || data.data?.status === "ABORTED") {
-      throw new Error(`Apify run ${data.data.status}`);
-    }
-  }
-  throw new Error("Apify run timeout");
-}
+// ── TikTok trending ─────────────────────────────────────────────────
 
 async function fetchTikTokTrending(labelId: string): Promise<void> {
   try {
-    const run = await runApifyActor({
-      actorId: "clockworks/tiktok-scraper",
-      input: {
-        hashtags: ["viral", "trending", "brasil"],
-        resultsType: "posts",
-        maxItems: 50,
-      },
+    const items = await runApifyActor(APIFY_ACTORS.tiktok, {
+      hashtags: ["viral", "trending", "brasil"],
+      resultsType: "posts",
+      maxItems: 50,
+      shouldDownloadVideos: false,
+      shouldDownloadCovers: false,
     });
 
-    const datasetId = await waitForRun(run.data.id);
-    const items = await getApifyDataset(datasetId);
-
-    // Get previous tracks for delta calc
     const previous = await db
       .select()
       .from(trendingTracks)
@@ -47,7 +24,6 @@ async function fetchTikTokTrending(labelId: string): Promise<void> {
 
     const prevByName = new Map(previous.map((t) => [t.trackName, t.rank]));
 
-    // Delete old
     await db
       .delete(trendingTracks)
       .where(
@@ -56,10 +32,15 @@ async function fetchTikTokTrending(labelId: string): Promise<void> {
 
     // Extract music from posts
     const musicMap = new Map<string, { plays: number; artist: string }>();
-    for (const item of items) {
-      const musicName = item.musicMeta?.musicName || item.music?.title;
-      const musicAuthor = item.musicMeta?.musicAuthor || item.music?.authorName || item.authorMeta?.name || "Unknown";
-      const plays = item.playCount || item.stats?.playCount || 0;
+    for (const item of items as Record<string, unknown>[]) {
+      const meta = item.musicMeta as Record<string, string> | undefined;
+      const music = item.music as Record<string, string> | undefined;
+      const musicName = meta?.musicName || music?.title;
+      const musicAuthor = meta?.musicAuthor || music?.authorName ||
+        (item.authorMeta as Record<string, string>)?.name || "Unknown";
+      const plays = (item.playCount as number) ||
+        ((item.stats as Record<string, number>)?.playCount) || 0;
+
       if (musicName) {
         const existing = musicMap.get(musicName);
         if (existing) {
@@ -84,7 +65,7 @@ async function fetchTikTokTrending(labelId: string): Promise<void> {
           artistName: data.artist,
           plays: data.plays,
           deltaRank: prevByName.has(name)
-            ? (prevByName.get(name)! - (i + 1))
+            ? prevByName.get(name)! - (i + 1)
             : null,
         }))
       );
@@ -94,10 +75,17 @@ async function fetchTikTokTrending(labelId: string): Promise<void> {
   }
 }
 
+// ── Spotify trending (via Apify actor) ──────────────────────────────
+
 async function fetchSpotifyTrending(labelId: string): Promise<void> {
   try {
-    // Spotify Viral 50 - Brazil
-    const tracks = await getSpotifyPlaylistTracks("37i9dQZEVXbMMy2roB9myp", 50);
+    // Use the Spotify Apify actor to scrape Viral 50 Brazil playlist
+    const items = await runApifyActor(APIFY_ACTORS.spotify, {
+      startUrls: [
+        { url: "https://open.spotify.com/playlist/37i9dQZEVXbMMy2roB9myp" },
+      ],
+      maxItems: 50,
+    });
 
     const previous = await db
       .select()
@@ -114,19 +102,28 @@ async function fetchSpotifyTrending(labelId: string): Promise<void> {
         and(eq(trendingTracks.labelId, labelId), eq(trendingTracks.platform, "spotify"))
       );
 
+    const tracks = (items as Record<string, unknown>[])
+      .filter((i) => i.name || i.trackName)
+      .slice(0, 50);
+
     if (tracks.length > 0) {
       await db.insert(trendingTracks).values(
-        tracks.map((t: { rank: number; trackName: string; artistName: string; popularity: number }) => ({
-          labelId,
-          platform: "spotify",
-          rank: t.rank,
-          trackName: t.trackName,
-          artistName: t.artistName,
-          plays: t.popularity,
-          deltaRank: prevByName.has(t.trackName)
-            ? (prevByName.get(t.trackName)! - t.rank)
-            : null,
-        }))
+        tracks.map((t, i) => {
+          const trackName = (t.name as string) || (t.trackName as string) || "Unknown";
+          const artistName = (t.artistName as string) ||
+            ((t.artists as Record<string, string>[]))?.[0]?.name || "Unknown";
+          return {
+            labelId,
+            platform: "spotify",
+            rank: i + 1,
+            trackName,
+            artistName,
+            plays: (t.popularity as number) || (t.playCount as number) || 0,
+            deltaRank: prevByName.has(trackName)
+              ? prevByName.get(trackName)! - (i + 1)
+              : null,
+          };
+        })
       );
     }
   } catch (err) {
@@ -134,18 +131,15 @@ async function fetchSpotifyTrending(labelId: string): Promise<void> {
   }
 }
 
+// ── Instagram Reels trending ────────────────────────────────────────
+
 async function fetchReelsTrending(labelId: string): Promise<void> {
   try {
-    const run = await runApifyActor({
-      actorId: "apify/instagram-reel-scraper",
-      input: {
-        hashtags: ["viral", "tendencia", "reels"],
-        resultsPerPage: 50,
-      },
+    const items = await runApifyActor(APIFY_ACTORS.instagram, {
+      hashtags: ["viral", "tendencia", "reels"],
+      resultsType: "posts",
+      resultsLimit: 50,
     });
-
-    const datasetId = await waitForRun(run.data.id);
-    const items = await getApifyDataset(datasetId);
 
     const previous = await db
       .select()
@@ -162,27 +156,26 @@ async function fetchReelsTrending(labelId: string): Promise<void> {
         and(eq(trendingTracks.labelId, labelId), eq(trendingTracks.platform, "reels"))
       );
 
-    // Sort by viewCount
-    const sorted = items
-      .filter((item: Record<string, unknown>) => item.caption || item.shortCode)
-      .sort((a: Record<string, unknown>, b: Record<string, unknown>) =>
-        ((b.viewCount as number) || 0) - ((a.viewCount as number) || 0)
+    const sorted = (items as Record<string, unknown>[])
+      .filter((item) => item.caption || item.shortCode)
+      .sort((a, b) =>
+        ((b.videoViewCount as number) || 0) - ((a.videoViewCount as number) || 0)
       )
       .slice(0, 50);
 
     if (sorted.length > 0) {
       await db.insert(trendingTracks).values(
-        sorted.map((item: Record<string, unknown>, i: number) => {
-          const name = (item.caption as string || "").slice(0, 100) || `Reel #${i + 1}`;
+        sorted.map((item, i) => {
+          const name = ((item.caption as string) || "").slice(0, 100) || `Reel #${i + 1}`;
           return {
             labelId,
             platform: "reels",
             rank: i + 1,
             trackName: name,
             artistName: (item.ownerUsername as string) || "Unknown",
-            plays: (item.viewCount as number) || 0,
+            plays: (item.videoViewCount as number) || 0,
             deltaRank: prevByName.has(name)
-              ? (prevByName.get(name)! - (i + 1))
+              ? prevByName.get(name)! - (i + 1)
               : null,
           };
         })
