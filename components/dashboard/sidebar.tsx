@@ -2,9 +2,14 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Music, Users, TrendingUp, Settings } from "lucide-react";
+import { Rss, Music, Users, TrendingUp, Settings } from "lucide-react";
 
 const navItems = [
+  {
+    label: "Feed",
+    href: "/dashboard/feed",
+    icon: Rss,
+  },
   {
     label: "Submissions",
     href: "/dashboard/submissions",

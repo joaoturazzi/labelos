@@ -7,6 +7,8 @@ import {
   aiConfigs,
   artistSocials,
   trendingTracks,
+  artistPosts,
+  artistInsights,
 } from "./schema";
 import { eq } from "drizzle-orm";
 import "dotenv/config";
@@ -314,6 +316,198 @@ async function seed() {
     console.log("Trending tracks created");
   } else {
     console.log("Trending tracks already exist");
+  }
+
+  // 7. Mock artist posts (for feed)
+  const existingPosts = await db
+    .select()
+    .from(artistPosts)
+    .where(eq(artistPosts.labelId, label.id));
+
+  if (existingPosts.length === 0) {
+    const hoursAgo = (n: number) => new Date(Date.now() - n * 60 * 60 * 1000);
+
+    await db.insert(artistPosts).values([
+      {
+        artistId: artist1.id,
+        labelId: label.id,
+        platform: "instagram",
+        postType: "reel",
+        externalId: "ig_001",
+        content: "Novo clipe saindo em breve! Preparados? 🔥 #funk #novidade #lançamento",
+        mediaUrl: "https://picsum.photos/seed/post1/640/360",
+        postUrl: "https://instagram.com/p/fake1",
+        likes: 4520,
+        comments: 312,
+        views: 89000,
+        playCount: 89000,
+        postedAt: hoursAgo(2),
+      },
+      {
+        artistId: artist1.id,
+        labelId: label.id,
+        platform: "tiktok",
+        postType: "video",
+        externalId: "tt_001",
+        content: "Beat novo no studio 🎵 quem quer ouvir primeiro?",
+        mediaUrl: "https://picsum.photos/seed/post2/640/360",
+        postUrl: "https://tiktok.com/@mctrovao/video/fake1",
+        likes: 12800,
+        comments: 890,
+        shares: 2100,
+        playCount: 450000,
+        postedAt: hoursAgo(5),
+      },
+      {
+        artistId: artist2.id,
+        labelId: label.id,
+        platform: "instagram",
+        postType: "post",
+        externalId: "ig_002",
+        content: "Set completo do festival disponivel no canal! Link na bio 🎧",
+        mediaUrl: "https://picsum.photos/seed/post3/640/360",
+        postUrl: "https://instagram.com/p/fake2",
+        likes: 2100,
+        comments: 145,
+        views: null,
+        postedAt: hoursAgo(8),
+      },
+      {
+        artistId: artist1.id,
+        labelId: label.id,
+        platform: "youtube",
+        postType: "video",
+        externalId: "yt_001",
+        content: "MC Trovão - Tempestade no Beat (Clipe Oficial)",
+        mediaUrl: "https://picsum.photos/seed/post4/640/360",
+        postUrl: "https://youtube.com/watch?v=fake1",
+        likes: 8900,
+        comments: 567,
+        views: 1200000,
+        postedAt: hoursAgo(24),
+      },
+      {
+        artistId: artist2.id,
+        labelId: label.id,
+        platform: "youtube",
+        postType: "video",
+        externalId: "yt_002",
+        content: "DJ Aurora Live Set - Festival de Verão 2025",
+        mediaUrl: "https://picsum.photos/seed/post5/640/360",
+        postUrl: "https://youtube.com/watch?v=fake2",
+        likes: 3400,
+        comments: 210,
+        views: 87000,
+        postedAt: hoursAgo(48),
+      },
+      {
+        artistId: artist1.id,
+        labelId: label.id,
+        platform: "news",
+        postType: "news",
+        externalId: "https://g1.globo.com/fake-mc-trovao",
+        content: "MC Trovão é destaque na nova geração do funk brasileiro — G1",
+        postUrl: "https://g1.globo.com/fake-mc-trovao",
+        likes: null,
+        comments: null,
+        postedAt: hoursAgo(72),
+      },
+      {
+        artistId: artist1.id,
+        labelId: label.id,
+        platform: "tiktok",
+        postType: "video",
+        externalId: "tt_002",
+        content: "Esse beat vai dominar o verão ☀️ marca alguem",
+        mediaUrl: "https://picsum.photos/seed/post6/640/360",
+        postUrl: "https://tiktok.com/@mctrovao/video/fake2",
+        likes: 34000,
+        comments: 2100,
+        shares: 5600,
+        playCount: 1800000,
+        postedAt: hoursAgo(12),
+      },
+    ]);
+    console.log("Artist posts created: 7");
+  } else {
+    console.log("Artist posts already exist:", existingPosts.length);
+  }
+
+  // 8. Mock insights
+  const existingInsights = await db
+    .select()
+    .from(artistInsights)
+    .where(eq(artistInsights.labelId, label.id));
+
+  if (existingInsights.length === 0) {
+    const hoursAgo = (n: number) => new Date(Date.now() - n * 60 * 60 * 1000);
+
+    await db.insert(artistInsights).values([
+      {
+        artistId: artist1.id,
+        labelId: label.id,
+        type: "alert",
+        title: "TikTok: +25.5% de seguidores em 48h",
+        body: "Crescimento acelerado de 45.000 para 52.000 seguidores.",
+        platform: "tiktok",
+        value: "52000",
+        delta: "25.50",
+        severity: "success",
+        isRead: false,
+        generatedAt: hoursAgo(1),
+      },
+      {
+        artistId: artist1.id,
+        labelId: label.id,
+        type: "trend",
+        title: "Post viralizando no TikTok: 1.8M views",
+        body: "Esse beat vai dominar o verão",
+        platform: "tiktok",
+        value: "1800000",
+        severity: "success",
+        isRead: false,
+        generatedAt: hoursAgo(3),
+      },
+      {
+        artistId: artist2.id,
+        labelId: label.id,
+        type: "alert",
+        title: "Queda de engajamento no Instagram",
+        body: "Engagement rate caiu de 2.50% para 2.10%.",
+        platform: "instagram",
+        value: "2.10",
+        delta: "-16.00",
+        severity: "warning",
+        isRead: false,
+        generatedAt: hoursAgo(6),
+      },
+      {
+        artistId: artist1.id,
+        labelId: label.id,
+        type: "milestone",
+        title: "MC Trovão foi mencionado em 1 veiculo(s) de midia",
+        body: "MC Trovão é destaque na nova geração do funk brasileiro",
+        platform: "news",
+        value: "1",
+        severity: "info",
+        isRead: true,
+        generatedAt: hoursAgo(24),
+      },
+      {
+        artistId: artist1.id,
+        labelId: label.id,
+        type: "trend",
+        title: "MC Trovão esta em alta atividade: 4 posts em 24h",
+        body: "Atividade acima do normal nas redes.",
+        value: "4",
+        severity: "info",
+        isRead: false,
+        generatedAt: hoursAgo(2),
+      },
+    ]);
+    console.log("Artist insights created: 5");
+  } else {
+    console.log("Artist insights already exist:", existingInsights.length);
   }
 
   console.log("Seed completed!");

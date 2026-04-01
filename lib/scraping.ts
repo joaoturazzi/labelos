@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { runApifyActor, getApifyDataset } from "./apify";
 import { getSpotifyArtist } from "./spotify";
 import { getYouTubeChannel } from "./youtube";
+import { scrapeAllPosts } from "./post-scraping";
+import { generateInsights } from "./insights";
 
 interface ScrapeResult {
   artistId: string;
@@ -164,6 +166,24 @@ export async function scrapeArtist(artistId: string): Promise<ScrapeResult> {
       result.platforms.push("youtube");
     } catch (err) {
       result.errors.push(`YouTube: ${(err as Error).message}`);
+    }
+  }
+
+  // Collect posts from all platforms
+  if (artist.labelId) {
+    try {
+      const postResult = await scrapeAllPosts(artistId, artist.labelId);
+      if (postResult.posts > 0) result.platforms.push("posts");
+      result.errors.push(...postResult.errors);
+    } catch (err) {
+      result.errors.push(`Posts: ${(err as Error).message}`);
+    }
+
+    // Generate insights after scraping
+    try {
+      await generateInsights({ artistId, labelId: artist.labelId });
+    } catch (err) {
+      result.errors.push(`Insights: ${(err as Error).message}`);
     }
   }
 

@@ -11,6 +11,7 @@ const isPublicRoute = createRouteMatcher([
 const isPublicPostRoute = createRouteMatcher([
   "/api/submissions",
   "/api/ai/analyze",
+  "/api/insights/generate(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

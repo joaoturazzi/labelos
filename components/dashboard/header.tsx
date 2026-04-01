@@ -11,6 +11,10 @@ const pageTitles: Record<string, string> = {
 
 export function Header() {
   const pathname = usePathname();
+
+  // Feed has its own header
+  if (pathname === "/dashboard/feed") return null;
+
   const title = pageTitles[pathname]
     ?? (pathname.startsWith("/dashboard/artists/") ? "Artista" : "Dashboard");
 

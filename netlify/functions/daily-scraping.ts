@@ -29,12 +29,23 @@ export const handler = async (event: any, context: any) => {
     });
     console.log("Trending trigger:", trendingRes.status);
 
+    // Trigger insights generation
+    const insightsRes = await fetch(`${appUrl}/api/insights/generate-all`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(secret ? { "x-cron-secret": secret } : {}),
+      },
+    });
+    console.log("Insights trigger:", insightsRes.status);
+
     return {
       statusCode: 200,
       body: JSON.stringify({
         message: "Cron executed",
         scraping: scrapingRes.status,
         trending: trendingRes.status,
+        insights: insightsRes.status,
       }),
     };
   } catch (err) {

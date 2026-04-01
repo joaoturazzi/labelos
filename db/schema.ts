@@ -7,6 +7,7 @@ import {
   numeric,
   timestamp,
   jsonb,
+  boolean,
 } from "drizzle-orm/pg-core";
 
 // ── Labels (gravadoras) ──────────────────────────────────────────────
@@ -93,4 +94,50 @@ export const aiConfigs = pgTable("ai_configs", {
   promptTemplate: text("prompt_template"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ── Artist Posts (posts coletados das redes) ─────────────────────────
+// platform: instagram | tiktok | youtube | spotify | news | twitter
+// post_type: post | reel | video | track | mention | news | story
+export const artistPosts = pgTable("artist_posts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  artistId: uuid("artist_id")
+    .references(() => artists.id, { onDelete: "cascade" })
+    .notNull(),
+  labelId: uuid("label_id")
+    .references(() => labels.id, { onDelete: "cascade" })
+    .notNull(),
+  platform: text("platform").notNull(),
+  postType: text("post_type").notNull(),
+  externalId: text("external_id"),
+  content: text("content"),
+  mediaUrl: text("media_url"),
+  postUrl: text("post_url"),
+  likes: integer("likes"),
+  comments: integer("comments"),
+  shares: integer("shares"),
+  views: bigint("views", { mode: "number" }),
+  playCount: bigint("play_count", { mode: "number" }),
+  collectedAt: timestamp("collected_at").defaultNow(),
+  postedAt: timestamp("posted_at"),
+});
+
+// ── Artist Insights (alertas e insights gerados) ─────────────────────
+// type: milestone | alert | trend | achievement
+// severity: info | warning | success | danger
+export const artistInsights = pgTable("artist_insights", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  artistId: uuid("artist_id")
+    .references(() => artists.id, { onDelete: "cascade" })
+    .notNull(),
+  labelId: uuid("label_id").references(() => labels.id),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  body: text("body"),
+  platform: text("platform"),
+  value: numeric("value", { precision: 12, scale: 2 }),
+  delta: numeric("delta", { precision: 12, scale: 2 }),
+  severity: text("severity").notNull().default("info"),
+  isRead: boolean("is_read").default(false),
+  generatedAt: timestamp("generated_at").defaultNow(),
 });
