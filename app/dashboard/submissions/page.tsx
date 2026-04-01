@@ -126,6 +126,13 @@ export default function SubmissionsPage() {
             {submissions.length}
           </span>
         </div>
+        <a
+          href="/api/submissions/export"
+          className="text-[11px] font-semibold px-[9px] py-[3px] bg-transparent text-neutral border border-[#e0e0de] rounded-[6px] no-underline hover:border-text3 transition-colors"
+          style={{ fontFamily: "inherit" }}
+        >
+          Exportar CSV
+        </a>
       </div>
 
       {/* Filters */}

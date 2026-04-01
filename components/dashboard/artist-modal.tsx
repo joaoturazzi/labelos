@@ -32,12 +32,14 @@ const EMPTY: ArtistData = {
 export function ArtistModal({ open, onClose, onSave, initial }: Props) {
   const [form, setForm] = useState<ArtistData>(EMPTY);
   const [saving, setSaving] = useState(false);
-  const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const [nameError, setNameError] = useState("");
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     if (open) {
       setForm(initial || EMPTY);
-      setErrors({});
+      setNameError("");
+      setSaveError("");
     }
   }, [open, initial]);
 
@@ -63,29 +65,33 @@ export function ArtistModal({ open, onClose, onSave, initial }: Props) {
 
   const update = (field: keyof ArtistData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: false }));
+    if (field === "name") setNameError("");
+    setSaveError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!form.name.trim()) {
-      setErrors({ name: true });
+      setNameError("Nome e obrigatorio");
       return;
     }
+
     setSaving(true);
+    setSaveError("");
     try {
       await onSave(form);
       onClose();
-    } catch {
-      // keep modal open
+    } catch (err) {
+      setSaveError((err as Error).message || "Erro ao salvar");
     } finally {
       setSaving(false);
     }
   };
 
-  const inputClass = (field: string) =>
+  const inputClass = (hasError?: boolean) =>
     `w-full text-[13px] px-[10px] py-[6px] rounded-[6px] bg-bg text-text outline-none border ${
-      errors[field] ? "border-danger" : "border-[#e5e4e0]"
+      hasError ? "border-danger" : "border-[#e5e4e0]"
     }`;
 
   return (
@@ -96,7 +102,7 @@ export function ArtistModal({ open, onClose, onSave, initial }: Props) {
         onClick={onClose}
       >
         <div
-          className="bg-bg rounded-[10px] p-6 w-full shadow-lg overflow-y-auto"
+          className="bg-bg rounded-[10px] p-6 w-full overflow-y-auto"
           style={{
             maxWidth: 520,
             maxHeight: "88vh",
@@ -117,43 +123,51 @@ export function ArtistModal({ open, onClose, onSave, initial }: Props) {
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            {/* Name — required */}
             <div>
               <label className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] block mb-1">
-                Nome
+                Nome <span className="text-danger">*</span>
               </label>
               <input
                 type="text"
                 value={form.name}
                 onChange={(e) => update("name", e.target.value)}
                 placeholder="Nome do artista"
-                className={inputClass("name")}
+                className={inputClass(!!nameError)}
                 style={{ fontFamily: "inherit" }}
               />
+              {nameError && (
+                <span className="text-[11px] text-danger mt-0.5 block">{nameError}</span>
+              )}
             </div>
+
+            {/* Email — optional */}
             <div>
               <label className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] block mb-1">
-                E-mail
+                E-mail{" "}
+                <span className="text-text4 font-normal normal-case tracking-normal">(opcional)</span>
               </label>
               <input
                 type="email"
                 value={form.email}
                 onChange={(e) => update("email", e.target.value)}
                 placeholder="artista@email.com"
-                className={inputClass("email")}
+                className={inputClass()}
                 style={{ fontFamily: "inherit" }}
               />
             </div>
 
             <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mt-2">
-              Redes sociais
+              Redes sociais{" "}
+              <span className="text-text4 font-normal normal-case tracking-normal">(opcional)</span>
             </p>
             <div className="grid grid-cols-2 gap-3">
               <input
                 type="text"
                 value={form.instagramHandle}
                 onChange={(e) => update("instagramHandle", e.target.value)}
-                placeholder="@usuario"
-                className={inputClass("instagramHandle")}
+                placeholder="@usuario Instagram"
+                className={inputClass()}
                 style={{ fontFamily: "inherit" }}
               />
               <input
@@ -161,7 +175,7 @@ export function ArtistModal({ open, onClose, onSave, initial }: Props) {
                 value={form.tiktokHandle}
                 onChange={(e) => update("tiktokHandle", e.target.value)}
                 placeholder="@usuario TikTok"
-                className={inputClass("tiktokHandle")}
+                className={inputClass()}
                 style={{ fontFamily: "inherit" }}
               />
               <input
@@ -169,7 +183,7 @@ export function ArtistModal({ open, onClose, onSave, initial }: Props) {
                 value={form.spotifyId}
                 onChange={(e) => update("spotifyId", e.target.value)}
                 placeholder="Spotify Artist ID"
-                className={inputClass("spotifyId")}
+                className={inputClass()}
                 style={{ fontFamily: "inherit" }}
               />
               <input
@@ -177,10 +191,14 @@ export function ArtistModal({ open, onClose, onSave, initial }: Props) {
                 value={form.youtubeChannel}
                 onChange={(e) => update("youtubeChannel", e.target.value)}
                 placeholder="YouTube Channel ID"
-                className={inputClass("youtubeChannel")}
+                className={inputClass()}
                 style={{ fontFamily: "inherit" }}
               />
             </div>
+
+            {saveError && (
+              <p className="text-[12px] text-danger">{saveError}</p>
+            )}
 
             <button
               type="submit"
