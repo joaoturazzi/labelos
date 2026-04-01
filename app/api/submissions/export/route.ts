@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
     // Build CSV
     const headers = [
-      "artista", "email", "track", "genero", "bpm", "mixador", "distribuidora",
+      "artista", "email", "track", "gênero", "bpm", "mixador", "distribuidora",
       "score_ia", "status", "data_envio", "instagram", "tiktok", "spotify", "youtube", "audio_url",
     ];
 

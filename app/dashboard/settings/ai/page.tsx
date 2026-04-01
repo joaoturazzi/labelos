@@ -122,10 +122,10 @@ export default function AISettingsPage() {
   return (
     <div className="max-w-[720px]">
       <h2 className="text-[15px] font-bold text-text mb-1">
-        Configuracao da IA
+        Configuração da IA
       </h2>
       <p className="text-[13px] text-text3 mb-6">
-        Defina os criterios que a IA usara para avaliar as demos recebidas.
+        Defina os critérios que a IA usara para avaliar as demos recebidas.
       </p>
 
       <div className="grid grid-cols-[1fr_1fr] gap-6">
@@ -133,7 +133,7 @@ export default function AISettingsPage() {
         <div className="flex flex-col gap-4">
           <div>
             <label className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] block mb-1.5">
-              Generos preferidos
+              Gêneros preferidos
             </label>
             <textarea
               value={criteria.generos_preferidos}
@@ -194,12 +194,12 @@ export default function AISettingsPage() {
             `}
             style={{ fontFamily: "inherit" }}
           >
-            {saving ? "Salvando..." : saved ? "Salvo!" : "Salvar configuracao"}
+            {saving ? "Salvando..." : saved ? "Salvo!" : "Salvar configuração"}
           </button>
 
           {saved && (
             <p className="text-[11px] text-success">
-              Configuracao salva com sucesso.
+              Configuração salva com sucesso.
             </p>
           )}
         </div>

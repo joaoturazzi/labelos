@@ -43,7 +43,7 @@ function formatNumber(n: number): string {
 
 const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
   pending: { label: "Pendente", bg: "var(--color-warning-bg)", color: "var(--color-warning)" },
-  reviewing: { label: "Em analise", bg: "var(--color-neutral-bg)", color: "var(--color-neutral)" },
+  reviewing: { label: "Em análise", bg: "var(--color-neutral-bg)", color: "var(--color-neutral)" },
   approved: { label: "Aprovado", bg: "var(--color-success-bg)", color: "var(--color-success)" },
   rejected: { label: "Rejeitado", bg: "var(--color-danger-bg)", color: "var(--color-danger)" },
 };
@@ -132,7 +132,7 @@ export default function ArtistProfilePage() {
   if (!profile) {
     return (
       <div className="text-[13px] text-text4 text-center py-16">
-        Artista nao encontrado.
+        Artista não encontrado.
       </div>
     );
   }
@@ -252,7 +252,7 @@ export default function ArtistProfilePage() {
           {/* Growth chart */}
           <div>
             <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-2">
-              Historico de crescimento
+              Histórico de crescimento
             </p>
             <div className="bg-bg border border-border rounded-[8px] p-4">
               <GrowthChart data={profile.growthHistory} />
@@ -403,7 +403,7 @@ export default function ArtistProfilePage() {
           {/* Last scraping */}
           <div className="bg-bg border border-border rounded-[8px] p-4">
             <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-2">
-              Ultimo scraping
+              Último scraping
             </p>
             {Object.values(profile.platforms).some((p) => p?.collectedAt) ? (
               <p className="text-[13px] text-text2">

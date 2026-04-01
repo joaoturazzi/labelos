@@ -89,7 +89,7 @@ export function AudioPlayer({ url, trackTitle, artistName }: AudioPlayerProps) {
           <div className="text-[11px] text-text3 mt-0.5">{artistName}</div>
         </div>
         <p className="text-[13px] text-text3 mb-3">
-          Este formato nao e suportado pelo browser.
+          Este formato não e suportado pelo browser.
         </p>
         <a
           href={url}

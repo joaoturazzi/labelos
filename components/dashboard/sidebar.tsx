@@ -75,7 +75,7 @@ export function Sidebar() {
         })}
 
         <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] px-2 mt-4 mb-2.5">
-          Configuracao
+          Configuração
         </p>
         {settingsItems.map((item) => {
           const isActive = pathname === item.href;

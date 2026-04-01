@@ -68,7 +68,7 @@ function TrendingColumn({
       </p>
       {tracks.length === 0 ? (
         <div className="text-[13px] text-text4 text-center py-8">
-          Dados ainda nao coletados.
+          Dados ainda não coletados.
         </div>
       ) : (
         <div className="flex flex-col gap-1.5">

@@ -35,7 +35,7 @@ interface Props {
 function StatusBadge({ status }: { status: string | null }) {
   const config: Record<string, { label: string; bg: string; color: string }> = {
     pending: { label: "Pendente", bg: "var(--color-warning-bg)", color: "var(--color-warning)" },
-    reviewing: { label: "Em analise", bg: "var(--color-neutral-bg)", color: "var(--color-neutral)" },
+    reviewing: { label: "Em análise", bg: "var(--color-neutral-bg)", color: "var(--color-neutral)" },
     approved: { label: "Aprovado", bg: "var(--color-success-bg)", color: "var(--color-success)" },
     rejected: { label: "Rejeitado", bg: "var(--color-danger-bg)", color: "var(--color-danger)" },
   };
@@ -155,7 +155,7 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
   const pontosFortes = (criteria?.pontos_fortes as string[]) || [];
   const pontosFracos = (criteria?.pontos_fracos as string[]) || [];
   const recomendacao = criteria?.recomendacao as string | undefined;
-  const generoDetectado = criteria?.genero_detectado as string | undefined;
+  const gêneroDetectado = criteria?.genero_detectado as string | undefined;
   const bpmEstimado = criteria?.bpm_estimado as number | undefined;
   const energia = criteria?.energia as string | undefined;
   const proximosPassos = criteria?.proximos_passos as string | undefined;
@@ -216,7 +216,7 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-bg2 border border-border rounded-[8px] p-3">
-                <p className="text-[11px] text-text4 mb-0.5">Genero</p>
+                <p className="text-[11px] text-text4 mb-0.5">Gênero</p>
                 <p className="text-[13px] text-text">{sub.genre || "—"}</p>
               </div>
               <div className="bg-bg2 border border-border rounded-[8px] p-3">
@@ -273,7 +273,7 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
                     }}>{sub.aiScore}/100</p>
                   </div>
                   <div className="bg-bg border border-border rounded-[8px] p-3">
-                    <p className="text-[11px] text-text4 uppercase tracking-[0.05em] font-semibold">Recomendacao</p>
+                    <p className="text-[11px] text-text4 uppercase tracking-[0.05em] font-semibold">Recomendação</p>
                     <p className="text-[26px] font-bold tracking-[-0.5px] mt-1" style={{
                       color: recomendacao === "sim" ? "var(--color-success)" : recomendacao === "talvez" ? "var(--color-warning)" : "var(--color-danger)"
                     }}>{recomendacao === "sim" ? "Sim" : recomendacao === "talvez" ? "Talvez" : "Nao"}</p>
@@ -304,11 +304,11 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
                 )}
 
                 {/* AI-detected tags */}
-                {(generoDetectado || bpmEstimado || energia) && (
+                {(gêneroDetectado || bpmEstimado || energia) && (
                   <div className="flex gap-1.5 flex-wrap">
-                    {generoDetectado && (
+                    {gêneroDetectado && (
                       <span className="text-[11px] bg-bg3 px-2 py-0.5 rounded-[4px] text-neutral">
-                        Genero: {generoDetectado}
+                        Gênero: {gêneroDetectado}
                       </span>
                     )}
                     {bpmEstimado && (
@@ -352,7 +352,7 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
                 {/* Next steps */}
                 {proximosPassos && (
                   <div className="rounded-[6px] p-2.5 text-[12px]" style={{ background: "#eaf2fb", border: "1px solid #bdd3e8", color: "#1a5276" }}>
-                    <strong>Proximos passos:</strong> {proximosPassos}
+                    <strong>Próximos passos:</strong> {proximosPassos}
                   </div>
                 )}
               </div>
@@ -366,7 +366,7 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
           {/* Actions */}
           <div>
             <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-2">
-              Acoes
+              Ações
             </p>
             <div className="flex gap-2">
               <button
@@ -397,7 +397,7 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
                   }
                 `}
               >
-                Em analise
+                Em análise
               </button>
               <button
                 onClick={() => onStatusChange(sub.id, "rejected")}

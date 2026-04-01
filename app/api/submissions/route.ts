@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Dados invalidos", details: parsed.error.flatten() },
+        { error: "Dados inválidos", details: parsed.error.flatten() },
         { status: 400 }
       );
     }
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!label) {
-      return NextResponse.json({ error: "Label nao encontrada" }, { status: 404 });
+      return NextResponse.json({ error: "Label não encontrada" }, { status: 404 });
     }
 
     // Check for duplicate submission

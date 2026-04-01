@@ -117,7 +117,7 @@ export default function PortalSettingsPage() {
         </div>
       )}
 
-      <h2 className="text-[15px] font-bold text-text mb-1">Portal de submissao</h2>
+      <h2 className="text-[15px] font-bold text-text mb-1">Portal de submissão</h2>
       <p className="text-[13px] text-text3 mb-6">
         Personalize o portal publico onde artistas enviam demos.
       </p>

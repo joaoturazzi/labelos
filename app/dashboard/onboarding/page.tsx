@@ -15,7 +15,7 @@ interface Step {
 const STEPS: Step[] = [
   {
     key: "ai",
-    label: "Configure os criterios da IA",
+    label: "Configure os critérios da IA",
     description: "Defina como a IA deve avaliar as demos recebidas.",
     href: "/dashboard/settings/ai",
   },
@@ -27,7 +27,7 @@ const STEPS: Step[] = [
   },
   {
     key: "link",
-    label: "Compartilhe seu link de submissao",
+    label: "Compartilhe seu link de submissão",
     description: "Envie o link para artistas submeterem demos.",
     action: "copy",
   },

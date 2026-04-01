@@ -5,10 +5,10 @@ export default function NotFound() {
     <div className="min-h-screen bg-bg flex items-center justify-center px-4">
       <div className="text-center">
         <p className="text-[22px] font-bold text-text tracking-[-0.3px] mb-2">
-          Pagina nao encontrada
+          Pagina não encontrada
         </p>
         <p className="text-[13px] text-text3 mb-6">
-          A pagina que voce procura nao existe ou foi movida.
+          A pagina que voce procura não existe ou foi movida.
         </p>
         <Link
           href="/"

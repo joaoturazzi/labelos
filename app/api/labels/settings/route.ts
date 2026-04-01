@@ -14,7 +14,7 @@ export async function PATCH(req: NextRequest) {
     const parsed = labelSettingsSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Dados invalidos", details: parsed.error.flatten() },
+        { error: "Dados inválidos", details: parsed.error.flatten() },
         { status: 400 }
       );
     }

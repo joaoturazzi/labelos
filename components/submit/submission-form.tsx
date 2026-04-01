@@ -297,7 +297,7 @@ export function SubmissionForm({ labelId, labelName }: Props) {
 
           {/* Genre checkboxes */}
           <div>
-            <label className={labelClass}>Genero</label>
+            <label className={labelClass}>Gênero</label>
             <div className="flex flex-wrap gap-1.5">
               {GENRES.map((g) => (
                 <button key={g} type="button"
@@ -544,7 +544,7 @@ export function SubmissionForm({ labelId, labelName }: Props) {
             </div>
             {audioFile && <p className="text-[11px] text-text3">Arquivo: {audioFile.name}</p>}
             {selectedGenres.length > 0 && (
-              <p className="text-[11px] text-text3">Genero: {selectedGenres.join(", ")}</p>
+              <p className="text-[11px] text-text3">Gênero: {selectedGenres.join(", ")}</p>
             )}
           </div>
 

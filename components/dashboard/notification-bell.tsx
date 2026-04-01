@@ -88,7 +88,7 @@ export function NotificationBell() {
         >
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
             <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em]">
-              Notificacoes
+              Notificações
             </p>
             {unread > 0 && (
               <button

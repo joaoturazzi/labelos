@@ -34,7 +34,7 @@ export async function PATCH(
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Dados invalidos", details: parsed.error.flatten() },
+        { error: "Dados inválidos", details: parsed.error.flatten() },
         { status: 400 }
       );
     }
@@ -54,7 +54,7 @@ export async function PATCH(
 
     if (!updated) {
       return NextResponse.json(
-        { error: "Submission nao encontrada" },
+        { error: "Submission não encontrada" },
         { status: 404 }
       );
     }
@@ -101,7 +101,7 @@ export async function GET(
 
     if (!submission) {
       return NextResponse.json(
-        { error: "Submission nao encontrada" },
+        { error: "Submission não encontrada" },
         { status: 404 }
       );
     }

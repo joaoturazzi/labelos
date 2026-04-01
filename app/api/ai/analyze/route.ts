@@ -245,7 +245,7 @@ ${jsonStructure}`,
   // Create notification
   if (submission.labelId) {
     const rec = parsed.recomendacao as string;
-    const badge = rec === "sim" ? "Recomendado" : rec === "talvez" ? "Talvez" : "Nao recomendado";
+    const badge = rec === "sim" ? "Recomendado" : rec === "talvez" ? "Talvez" : "Não recomendado";
     await db.insert(notifications).values({
       labelId: submission.labelId,
       type: "ai_score_ready",

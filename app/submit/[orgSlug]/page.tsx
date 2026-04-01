@@ -41,7 +41,7 @@ export default async function SubmitPage({
       <div className="min-h-screen bg-bg flex items-center justify-center px-4">
         <div className="text-center">
           <p className="text-[15px] font-bold text-text mb-2">
-            Gravadora nao encontrada.
+            Gravadora não encontrada.
           </p>
           <p className="text-[13px] text-text3">
             Verifique o link e tente novamente.

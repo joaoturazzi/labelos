@@ -481,15 +481,21 @@ export default function FeedPage() {
     );
   };
 
+  const [updateMsg, setUpdateMsg] = useState<string | null>(null);
+
   const handleRefresh = async () => {
     setUpdating(true);
+    setUpdateMsg(null);
     try {
       await fetch("/api/scraping/run", { method: "POST" });
-      setTimeout(() => {
-        fetchFeed(1);
+      setUpdateMsg("Coleta iniciada. Os dados aparecerão em alguns minutos.");
+      setTimeout(async () => {
+        await fetchFeed(1);
         setUpdating(false);
-      }, 3000);
+        setUpdateMsg(null);
+      }, 5000);
     } catch {
+      setUpdateMsg("Erro ao iniciar coleta.");
       setUpdating(false);
     }
   };

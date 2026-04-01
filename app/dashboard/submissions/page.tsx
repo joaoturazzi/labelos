@@ -31,14 +31,14 @@ interface Submission {
 const STATUS_FILTERS = [
   { key: "all", label: "Todos" },
   { key: "pending", label: "Pendente" },
-  { key: "reviewing", label: "Em analise" },
+  { key: "reviewing", label: "Em análise" },
   { key: "approved", label: "Aprovado" },
   { key: "rejected", label: "Rejeitado" },
 ];
 
 const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
   pending: { label: "Pendente", bg: "var(--color-warning-bg)", color: "var(--color-warning)" },
-  reviewing: { label: "Em analise", bg: "var(--color-neutral-bg)", color: "var(--color-neutral)" },
+  reviewing: { label: "Em análise", bg: "var(--color-neutral-bg)", color: "var(--color-neutral)" },
   approved: { label: "Aprovado", bg: "var(--color-success-bg)", color: "var(--color-success)" },
   rejected: { label: "Rejeitado", bg: "var(--color-danger-bg)", color: "var(--color-danger)" },
 };
