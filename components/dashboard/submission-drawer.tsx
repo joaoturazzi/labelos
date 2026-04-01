@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from "react";
 import { X, ExternalLink } from "lucide-react";
+import { AudioPlayer } from "./audio-player";
 
 interface Submission {
   id: string;
@@ -124,8 +125,12 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
   const criteria = submission.aiCriteriaUsed as Record<string, unknown> | null;
   const pontosFortes = (criteria?.pontos_fortes as string[]) || [];
   const pontosFracos = (criteria?.pontos_fracos as string[]) || [];
-  const fitCriterios = criteria?.fit_criterios as string | undefined;
   const recomendacao = criteria?.recomendacao as string | undefined;
+  const generoDetectado = criteria?.genero_detectado as string | undefined;
+  const bpmEstimado = criteria?.bpm_estimado as number | undefined;
+  const energia = criteria?.energia as string | undefined;
+  const proximosPassos = criteria?.proximos_passos as string | undefined;
+  const hasCriteria = criteria != null;
 
   return (
     <>
@@ -168,14 +173,11 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
             <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-2">
               Player
             </p>
-            <div className="bg-bg2 border border-border rounded-[8px] p-3">
-              <audio
-                controls
-                src={submission.audioFileUrl}
-                className="w-full"
-                style={{ height: 36 }}
-              />
-            </div>
+            <AudioPlayer
+              url={submission.audioFileUrl}
+              trackTitle={submission.trackTitle}
+              artistName={submission.artistName}
+            />
           </div>
 
           {/* Track data */}
@@ -218,7 +220,7 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
             </div>
           )}
 
-          {/* AI Result */}
+          {/* AI Result — expanded */}
           <div>
             <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-2">
               Resultado da IA
@@ -226,78 +228,109 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
 
             {submission.aiScore === null && !submission.aiSummary ? (
               <div className="bg-bg2 border border-border rounded-[8px] p-4 text-center">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <div
-                    className="w-3 h-3 rounded-full bg-text4 animate-pulse"
-                  />
-                  <p className="text-[13px] text-text4">Analise em andamento...</p>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-text4 animate-pulse" />
+                  <p className="text-[13px] text-text4">Analisando...</p>
                 </div>
+              </div>
+            ) : submission.aiScore !== null ? (
+              <div className="flex flex-col gap-3">
+                {/* Score + recommendation */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="bg-bg border border-border rounded-[8px] p-3">
+                    <p className="text-[11px] text-text4 uppercase tracking-[0.05em] font-semibold">Score geral</p>
+                    <p className="text-[26px] font-bold tracking-[-0.5px] mt-1" style={{
+                      color: submission.aiScore >= 70 ? "var(--color-success)" : submission.aiScore >= 40 ? "var(--color-warning)" : "var(--color-danger)"
+                    }}>{submission.aiScore}/100</p>
+                  </div>
+                  <div className="bg-bg border border-border rounded-[8px] p-3">
+                    <p className="text-[11px] text-text4 uppercase tracking-[0.05em] font-semibold">Recomendacao</p>
+                    <p className="text-[26px] font-bold tracking-[-0.5px] mt-1" style={{
+                      color: recomendacao === "sim" ? "var(--color-success)" : recomendacao === "talvez" ? "var(--color-warning)" : "var(--color-danger)"
+                    }}>{recomendacao === "sim" ? "Sim" : recomendacao === "talvez" ? "Talvez" : "Nao"}</p>
+                  </div>
+                </div>
+
+                {/* Sub-scores */}
+                {hasCriteria && (
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[
+                      { label: "Prod.", key: "qualidade_producao" },
+                      { label: "Comerc.", key: "potencial_comercial" },
+                      { label: "Fit", key: "fit_criterios" },
+                      { label: "Origin.", key: "originalidade" },
+                      { label: "Viral", key: "potencial_viral" },
+                    ].map((item) => {
+                      const val = (criteria as Record<string, unknown>)[item.key];
+                      return (
+                        <div key={item.key} className="bg-bg2 border border-border rounded-[6px] p-2 text-center">
+                          <p className="text-[9px] text-text4 uppercase tracking-[0.06em]">{item.label}</p>
+                          <p className="text-[18px] font-bold text-text mt-0.5">
+                            {val != null ? String(val) : "\u2014"}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* AI-detected tags */}
+                {(generoDetectado || bpmEstimado || energia) && (
+                  <div className="flex gap-1.5 flex-wrap">
+                    {generoDetectado && (
+                      <span className="text-[11px] bg-bg3 px-2 py-0.5 rounded-[4px] text-neutral">
+                        Genero: {generoDetectado}
+                      </span>
+                    )}
+                    {bpmEstimado && (
+                      <span className="text-[11px] bg-bg3 px-2 py-0.5 rounded-[4px] text-neutral">
+                        BPM: ~{bpmEstimado}
+                      </span>
+                    )}
+                    {energia && (
+                      <span className="text-[11px] bg-bg3 px-2 py-0.5 rounded-[4px] text-neutral">
+                        Energia: {energia}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Summary */}
+                <p className="text-[13px] text-text2 leading-relaxed">
+                  {submission.aiSummary}
+                </p>
+
+                {/* Strong/weak points */}
+                <div className="grid grid-cols-2 gap-3">
+                  {pontosFortes.length > 0 && (
+                    <div>
+                      <p className="text-[11px] font-bold text-success uppercase tracking-[0.08em] mb-1.5">Pontos fortes</p>
+                      {pontosFortes.map((p, i) => (
+                        <p key={i} className="text-[12px] text-text2 mb-1">&#10003; {p}</p>
+                      ))}
+                    </div>
+                  )}
+                  {pontosFracos.length > 0 && (
+                    <div>
+                      <p className="text-[11px] font-bold text-danger uppercase tracking-[0.08em] mb-1.5">Pontos fracos</p>
+                      {pontosFracos.map((p, i) => (
+                        <p key={i} className="text-[12px] text-text2 mb-1">&#10007; {p}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Next steps */}
+                {proximosPassos && (
+                  <div className="rounded-[6px] p-2.5 text-[12px]" style={{ background: "#eaf2fb", border: "1px solid #bdd3e8", color: "#1a5276" }}>
+                    <strong>Proximos passos:</strong> {proximosPassos}
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="flex flex-col gap-3">
-                {/* Score card */}
-                <div className="bg-bg border border-border rounded-[8px] p-4 flex items-center gap-4">
-                  <ScoreBadge score={submission.aiScore} />
-                  <div className="flex-1">
-                    {recomendacao && (
-                      <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.05em] mb-0.5">
-                        Recomendacao: {recomendacao}
-                      </p>
-                    )}
-                    <p className="text-[13px] text-text2 leading-relaxed">
-                      {submission.aiSummary}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Pontos fortes */}
-                {pontosFortes.length > 0 && (
-                  <div>
-                    <p className="text-[11px] text-success font-semibold mb-1">
-                      Pontos fortes
-                    </p>
-                    <ul className="flex flex-col gap-1">
-                      {pontosFortes.map((p, i) => (
-                        <li
-                          key={i}
-                          className="text-[13px] text-text2 pl-3 relative before:content-[''] before:absolute before:left-0 before:top-[7px] before:w-1.5 before:h-1.5 before:rounded-full before:bg-success"
-                        >
-                          {p}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Pontos fracos */}
-                {pontosFracos.length > 0 && (
-                  <div>
-                    <p className="text-[11px] text-danger font-semibold mb-1">
-                      Pontos fracos
-                    </p>
-                    <ul className="flex flex-col gap-1">
-                      {pontosFracos.map((p, i) => (
-                        <li
-                          key={i}
-                          className="text-[13px] text-text2 pl-3 relative before:content-[''] before:absolute before:left-0 before:top-[7px] before:w-1.5 before:h-1.5 before:rounded-full before:bg-danger"
-                        >
-                          {p}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Fit com critérios */}
-                {fitCriterios && (
-                  <div className="bg-bg2 border border-border rounded-[8px] p-3">
-                    <p className="text-[11px] text-text3 font-semibold mb-1">
-                      Fit com criterios
-                    </p>
-                    <p className="text-[13px] text-text2">{fitCriterios}</p>
-                  </div>
-                )}
-              </div>
+              <p className="text-[13px] text-text4 text-center py-4">
+                {submission.aiSummary || "Analisando..."}
+              </p>
             )}
           </div>
 

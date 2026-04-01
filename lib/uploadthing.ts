@@ -4,11 +4,18 @@ const f = createUploadthing();
 
 export const uploadRouter = {
   audioUploader: f({
-    audio: { maxFileSize: "64MB", maxFileCount: 1 },
-    "blob": { maxFileSize: "64MB", maxFileCount: 1 },
+    audio: { maxFileSize: "128MB", maxFileCount: 1 },
+    "blob": { maxFileSize: "128MB", maxFileCount: 1 },
   })
     .onUploadComplete(async ({ file }) => {
-      console.log("Upload complete:", file.url);
+      console.log("[UploadThing] Audio:", file.name, file.size);
+      return { url: file.url, key: file.key, name: file.name };
+    }),
+
+  coverUploader: f({
+    image: { maxFileSize: "4MB", maxFileCount: 1 },
+  })
+    .onUploadComplete(async ({ file }) => {
       return { url: file.url, key: file.key };
     }),
 } satisfies FileRouter;

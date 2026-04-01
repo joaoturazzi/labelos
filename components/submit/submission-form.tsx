@@ -3,168 +3,200 @@
 import { useState, useRef, useCallback } from "react";
 
 const GENRES = [
-  "Funk",
-  "Trap",
-  "Pagode",
-  "Sertanejo",
-  "Pop",
-  "R&B",
-  "Rock",
-  "Outro",
+  "Rap", "Trap", "Funk", "Afrobeat", "EDM", "Pop", "R&B",
+  "Pagode", "Sertanejo", "Rock", "Outro",
 ];
+
+interface ArtistEntry {
+  nomeArtistico: string;
+  nomeCompleto: string;
+  cpf: string;
+  dataNascimento: string;
+  instagram: string;
+  tiktok: string;
+  twitter: string;
+  facebook: string;
+  spotify: string;
+  appleMusic: string;
+  deezer: string;
+  youtubeMusic: string;
+  amazonMusic: string;
+}
+
+interface RoyaltyEntry {
+  artista: string;
+  nomeCompleto: string;
+  cpf: string;
+  dataNascimento: string;
+  instagram: string;
+  tiktok: string;
+  twitter: string;
+  percentual: string;
+}
 
 interface Props {
   labelId: string;
   labelName: string;
 }
 
+const emptyArtist = (): ArtistEntry => ({
+  nomeArtistico: "", nomeCompleto: "", cpf: "", dataNascimento: "",
+  instagram: "", tiktok: "", twitter: "", facebook: "",
+  spotify: "", appleMusic: "", deezer: "", youtubeMusic: "", amazonMusic: "",
+});
+
+const emptyRoyalty = (): RoyaltyEntry => ({
+  artista: "", nomeCompleto: "", cpf: "", dataNascimento: "",
+  instagram: "", tiktok: "", twitter: "", percentual: "",
+});
+
+function cpfMask(v: string) {
+  return v.replace(/\D/g, "").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2").slice(0, 14);
+}
+
 export function SubmissionForm({ labelId, labelName }: Props) {
-  const [form, setForm] = useState({
-    artistName: "",
-    artistEmail: "",
-    trackTitle: "",
-    genre: "",
-    bpm: "",
-    mixador: "",
-    distributor: "",
-    instagramUrl: "",
-    tiktokUrl: "",
-    spotifyUrl: "",
-    youtubeUrl: "",
-  });
-  const [audioFile, setAudioFile] = useState<{
-    url: string;
-    key: string;
-    name: string;
-  } | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
-  const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const update = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: false }));
+  // Step 1 — Track data
+  const [trackTitle, setTrackTitle] = useState("");
+  const [artistNameMain, setArtistNameMain] = useState("");
+  const [artistEmail, setArtistEmail] = useState("");
+  const [compositores, setCompositores] = useState("");
+  const [produtor, setProdutor] = useState("");
+  const [engenheiroMix, setEngenheiroMix] = useState("");
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [dataLancamento, setDataLancamento] = useState("");
+  const [bpm, setBpm] = useState("");
+
+  // Files
+  const [audioFile, setAudioFile] = useState<{ url: string; key: string; name: string } | null>(null);
+  const [coverFile, setCoverFile] = useState<{ url: string; key: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  // Step 2 — Artists
+  const [artistEntries, setArtistEntries] = useState<ArtistEntry[]>([emptyArtist()]);
+
+  // Step 3 — Royalties
+  const [royaltyEntries, setRoyaltyEntries] = useState<RoyaltyEntry[]>([emptyRoyalty()]);
+
+  const inputClass = (field?: string) =>
+    `w-full text-[13px] px-[10px] py-[6px] rounded-[6px] bg-bg text-text outline-none border ${
+      field && errors[field] ? "border-danger" : "border-[#e5e4e0]"
+    }`;
+
+  const labelClass = "text-[11px] font-bold text-text3 uppercase tracking-[0.08em] block mb-1";
+
+  // File handling
+  const handleAudioSelect = useCallback(async (file: File) => {
+    if (file.size > 100 * 1024 * 1024) { alert("Maximo 100MB."); return; }
+    setUploading(true); setUploadProgress(0);
+    const interval = setInterval(() => setUploadProgress((p) => Math.min(p + 8, 90)), 300);
+    try {
+      // Local fallback for dev
+      const url = URL.createObjectURL(file);
+      const key = `local_${Date.now()}_${file.name}`;
+      setAudioFile({ url, key, name: file.name });
+      setUploadProgress(100);
+    } finally {
+      clearInterval(interval);
+      setUploading(false);
     }
+  }, []);
+
+  const handleCoverSelect = useCallback(async (file: File) => {
+    if (file.size > 5 * 1024 * 1024) { alert("Maximo 5MB."); return; }
+    const url = URL.createObjectURL(file);
+    setCoverFile({ url, key: `cover_${Date.now()}` });
+  }, []);
+
+  // Navigation
+  const validateStep1 = () => {
+    const e: Record<string, boolean> = {};
+    if (!trackTitle.trim()) e.trackTitle = true;
+    if (!artistNameMain.trim()) e.artistNameMain = true;
+    if (!artistEmail.trim()) e.artistEmail = true;
+    if (!audioFile) e.audio = true;
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
-  const handleFileSelect = useCallback(
-    async (file: File) => {
-      const validTypes = [
-        "audio/mpeg",
-        "audio/wav",
-        "audio/aiff",
-        "audio/x-aiff",
-        "audio/mp3",
-      ];
-      if (!validTypes.includes(file.type) && !file.name.match(/\.(mp3|wav|aiff)$/i)) {
-        alert("Formato não suportado. Envie MP3, WAV ou AIFF.");
-        return;
-      }
-      if (file.size > 50 * 1024 * 1024) {
-        alert("Arquivo muito grande. Máximo 50MB.");
-        return;
-      }
+  const validateStep2 = () => {
+    const e: Record<string, boolean> = {};
+    if (!artistEntries[0].nomeArtistico.trim()) e.artist0name = true;
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
-      setUploading(true);
-      setUploadProgress(0);
-      setErrors((prev) => ({ ...prev, audio: false }));
+  const royaltyTotal = royaltyEntries.reduce((sum, r) => sum + (parseFloat(r.percentual) || 0), 0);
 
-      try {
-        // Use UploadThing client-side upload
-        const formData = new FormData();
-        formData.append("file", file);
-
-        // Simulate progress for UX
-        const progressInterval = setInterval(() => {
-          setUploadProgress((prev) => Math.min(prev + 10, 90));
-        }, 300);
-
-        const res = await fetch("/api/uploadthing", {
-          method: "POST",
-          headers: {
-            "x-uploadthing-package": "uploadthing",
-          },
-          body: formData,
-        });
-
-        clearInterval(progressInterval);
-
-        // Fallback: use direct presigned URL approach
-        // For local dev, we'll store as a data URL reference
-        // In production, UploadThing handles this via their SDK
-        const url = URL.createObjectURL(file);
-        const key = `local_${Date.now()}_${file.name}`;
-
-        setAudioFile({ url, key, name: file.name });
-        setUploadProgress(100);
-      } catch (err) {
-        console.error("Upload failed:", err);
-        // Fallback for local dev without UploadThing credentials
-        const url = URL.createObjectURL(file);
-        const key = `local_${Date.now()}_${file.name}`;
-        setAudioFile({ url, key, name: file.name });
-        setUploadProgress(100);
-      } finally {
-        setUploading(false);
-      }
-    },
-    []
-  );
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setDragOver(false);
-      const file = e.dataTransfer.files[0];
-      if (file) handleFileSelect(file);
-    },
-    [handleFileSelect]
-  );
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validate required fields
-    const newErrors: Record<string, boolean> = {};
-    if (!form.artistName.trim()) newErrors.artistName = true;
-    if (!form.artistEmail.trim()) newErrors.artistEmail = true;
-    if (!form.trackTitle.trim()) newErrors.trackTitle = true;
-    if (!audioFile) newErrors.audio = true;
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
+  const validateStep3 = () => {
+    if (royaltyEntries.length === 0) return true;
+    if (Math.abs(royaltyTotal - 100) > 0.01 && royaltyTotal > 0) {
+      alert("A soma dos royalties deve ser 100%.");
+      return false;
     }
+    return true;
+  };
 
+  const nextStep = () => {
+    if (step === 1 && !validateStep1()) return;
+    if (step === 2 && !validateStep2()) return;
+    if (step === 3 && !validateStep3()) return;
+    setStep(step + 1);
+  };
+
+  const handleSubmit = async () => {
     setSubmitting(true);
-
     try {
       const res = await fetch("/api/submissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           labelId,
-          ...form,
-          bpm: form.bpm || null,
+          trackTitle: trackTitle.trim(),
+          artistName: artistNameMain.trim(),
+          artistEmail: artistEmail.trim(),
+          genre: selectedGenres.join(", ") || null,
+          bpm: bpm ? parseInt(bpm) : null,
+          compositores: compositores.trim() || null,
+          produtor: produtor.trim() || null,
+          engenheiroMix: engenheiroMix.trim() || null,
+          dataLancamento: dataLancamento || null,
           audioFileUrl: audioFile!.url,
           audioFileKey: audioFile!.key,
+          coverUrl: coverFile?.url || null,
+          coverKey: coverFile?.key || null,
+          instagramUrl: artistEntries[0]?.instagram || null,
+          tiktokUrl: artistEntries[0]?.tiktok || null,
+          twitterUrl: artistEntries[0]?.twitter || null,
+          facebookUrl: artistEntries[0]?.facebook || null,
+          spotifyUrl: artistEntries[0]?.spotify || null,
+          appleMusicUrl: artistEntries[0]?.appleMusic || null,
+          deezerUrl: artistEntries[0]?.deezer || null,
+          youtubeMusicUrl: artistEntries[0]?.youtubeMusic || null,
+          amazonMusicUrl: artistEntries[0]?.amazonMusic || null,
+          nomeCompleto: artistEntries[0]?.nomeCompleto || null,
+          cpf: artistEntries[0]?.cpf || null,
+          dataNascimento: artistEntries[0]?.dataNascimento || null,
+          royaltiesData: royaltyEntries.filter((r) => r.artista.trim()),
           lgpdConsent: true,
         }),
       });
 
       if (!res.ok) {
-        throw new Error("Submit failed");
+        const data = await res.json();
+        alert(data.error || "Erro ao enviar.");
+        return;
       }
-
       setSubmitted(true);
-    } catch (err) {
-      console.error("Submit error:", err);
-      alert("Erro ao enviar demo. Tente novamente.");
+    } catch {
+      alert("Erro de conexao. Tente novamente.");
     } finally {
       setSubmitting(false);
     }
@@ -172,240 +204,391 @@ export function SubmissionForm({ labelId, labelName }: Props) {
 
   if (submitted) {
     return (
-      <div className="text-center py-16">
-        <div className="text-[22px] font-bold text-text tracking-[-0.3px] mb-2">
-          Demo enviada!
-        </div>
-        <p className="text-[13px] text-text3">
-          Em breve nossa equipe vai ouvir.
-        </p>
+      <div className="text-center py-12">
+        <p className="text-[22px] font-bold text-text tracking-[-0.3px] mb-2">Demo enviada!</p>
+        <p className="text-[13px] text-text3">Em breve nossa equipe vai ouvir.</p>
       </div>
     );
   }
 
-  const inputClass = (field: string) =>
-    `w-full text-[13px] px-[10px] py-[6px] rounded-[6px] bg-bg text-text outline-none font-[inherit] border ${
-      errors[field] ? "border-danger" : "border-[#e5e4e0]"
-    }`;
+  // Step indicator
+  const StepIndicator = () => (
+    <div className="flex items-center gap-2 mb-6">
+      {[1, 2, 3, 4].map((s) => (
+        <div key={s} className="flex items-center gap-2">
+          <div
+            className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
+              step >= s ? "bg-text text-white" : "bg-bg3 text-text3"
+            }`}
+          >
+            {s}
+          </div>
+          {s < 4 && <div className={`w-8 h-0.5 ${step > s ? "bg-text" : "bg-bg3"}`} />}
+        </div>
+      ))}
+    </div>
+  );
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-      {/* Section: Sobre você */}
-      <div>
-        <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-3">
-          Sobre voce
-        </p>
-        <div className="flex flex-col gap-3">
-          <div>
-            <input
-              type="text"
-              placeholder="Nome artistico"
-              value={form.artistName}
-              onChange={(e) => update("artistName", e.target.value)}
-              className={inputClass("artistName")}
-            />
-          </div>
-          <div>
-            <input
-              type="email"
-              placeholder="E-mail"
-              value={form.artistEmail}
-              onChange={(e) => update("artistEmail", e.target.value)}
-              className={inputClass("artistEmail")}
-            />
-          </div>
-        </div>
-      </div>
+    <div>
+      <StepIndicator />
 
-      {/* Section: Sobre a track */}
-      <div>
-        <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-3">
-          Sobre a track
-        </p>
-        <div className="flex flex-col gap-3">
-          <input
-            type="text"
-            placeholder="Nome da track"
-            value={form.trackTitle}
-            onChange={(e) => update("trackTitle", e.target.value)}
-            className={inputClass("trackTitle")}
-          />
-          <div className="grid grid-cols-2 gap-3">
-            <select
-              value={form.genre}
-              onChange={(e) => update("genre", e.target.value)}
-              className={`${inputClass("genre")} appearance-none`}
+      {/* ── STEP 1: Dados da música ── */}
+      {step === 1 && (
+        <div className="flex flex-col gap-4">
+          <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em]">
+            Dados da musica
+          </p>
+
+          {/* Cover upload */}
+          <div>
+            <label className={labelClass}>Capa (opcional)</label>
+            <div
+              onClick={() => coverInputRef.current?.click()}
+              className="w-24 h-24 rounded-[6px] border border-dashed border-border2 bg-bg flex items-center justify-center cursor-pointer overflow-hidden hover:border-text3 transition-colors"
             >
-              <option value="">Genero</option>
-              {GENRES.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              placeholder="BPM"
-              value={form.bpm}
-              onChange={(e) => update("bpm", e.target.value)}
-              className={inputClass("bpm")}
-            />
-          </div>
-          <input
-            type="text"
-            placeholder="Mixador / produtor"
-            value={form.mixador}
-            onChange={(e) => update("mixador", e.target.value)}
-            className={inputClass("mixador")}
-          />
-          <input
-            type="text"
-            placeholder="Distribuidora"
-            value={form.distributor}
-            onChange={(e) => update("distributor", e.target.value)}
-            className={inputClass("distributor")}
-          />
-        </div>
-      </div>
-
-      {/* Section: Redes sociais */}
-      <div>
-        <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-3">
-          Redes sociais
-        </p>
-        <div className="flex flex-col gap-3">
-          <input
-            type="text"
-            placeholder="@usuario no Instagram"
-            value={form.instagramUrl}
-            onChange={(e) => update("instagramUrl", e.target.value)}
-            className={inputClass("instagramUrl")}
-          />
-          <input
-            type="text"
-            placeholder="@usuario no TikTok"
-            value={form.tiktokUrl}
-            onChange={(e) => update("tiktokUrl", e.target.value)}
-            className={inputClass("tiktokUrl")}
-          />
-          <input
-            type="text"
-            placeholder="URL do perfil Spotify"
-            value={form.spotifyUrl}
-            onChange={(e) => update("spotifyUrl", e.target.value)}
-            className={inputClass("spotifyUrl")}
-          />
-          <input
-            type="text"
-            placeholder="URL do canal YouTube"
-            value={form.youtubeUrl}
-            onChange={(e) => update("youtubeUrl", e.target.value)}
-            className={inputClass("youtubeUrl")}
-          />
-        </div>
-      </div>
-
-      {/* Section: Arquivo */}
-      <div>
-        <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-3">
-          Arquivo
-        </p>
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`
-            rounded-[8px] p-6 text-center cursor-pointer
-            transition-colors duration-[120ms]
-            border-2 border-dashed
-            ${
-              errors.audio
-                ? "border-danger bg-danger-bg"
-                : dragOver
-                ? "border-text3 bg-bg3"
-                : "border-border2 bg-bg"
-            }
-          `}
-        >
-          {audioFile ? (
-            <div>
-              <p className="text-[13px] text-text font-medium">
-                {audioFile.name}
-              </p>
-              <p className="text-[11px] text-success mt-1">Upload concluido</p>
+              {coverFile ? (
+                <img src={coverFile.url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-[11px] text-text4 text-center">Capa</span>
+              )}
             </div>
-          ) : uploading ? (
+            <input ref={coverInputRef} type="file" accept="image/*" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCoverSelect(f); }} />
+          </div>
+
+          <div>
+            <label className={labelClass}>Titulo da musica</label>
+            <input type="text" value={trackTitle} onChange={(e) => setTrackTitle(e.target.value)}
+              className={inputClass("trackTitle")} style={{ fontFamily: "inherit" }} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-[13px] text-text3">Enviando...</p>
-              <div className="mt-2 bg-bg3 rounded-[5px] h-[5px] overflow-hidden">
-                <div
-                  className="h-full rounded-[5px] bg-text transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                />
+              <label className={labelClass}>Artista principal</label>
+              <input type="text" value={artistNameMain} onChange={(e) => setArtistNameMain(e.target.value)}
+                className={inputClass("artistNameMain")} style={{ fontFamily: "inherit" }} />
+            </div>
+            <div>
+              <label className={labelClass}>E-mail</label>
+              <input type="email" value={artistEmail} onChange={(e) => setArtistEmail(e.target.value)}
+                className={inputClass("artistEmail")} style={{ fontFamily: "inherit" }} />
+            </div>
+          </div>
+
+          <div>
+            <label className={labelClass}>Compositores</label>
+            <input type="text" value={compositores} onChange={(e) => setCompositores(e.target.value)}
+              placeholder="Nome1, Nome2" className={inputClass()} style={{ fontFamily: "inherit" }} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Produtor</label>
+              <input type="text" value={produtor} onChange={(e) => setProdutor(e.target.value)}
+                className={inputClass()} style={{ fontFamily: "inherit" }} />
+            </div>
+            <div>
+              <label className={labelClass}>Eng. Mix/Master</label>
+              <input type="text" value={engenheiroMix} onChange={(e) => setEngenheiroMix(e.target.value)}
+                className={inputClass()} style={{ fontFamily: "inherit" }} />
+            </div>
+          </div>
+
+          {/* Genre checkboxes */}
+          <div>
+            <label className={labelClass}>Genero</label>
+            <div className="flex flex-wrap gap-1.5">
+              {GENRES.map((g) => (
+                <button key={g} type="button"
+                  onClick={() => setSelectedGenres((prev) =>
+                    prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]
+                  )}
+                  className="text-[12px] px-3 py-1 rounded-[20px] font-medium cursor-pointer border transition-colors"
+                  style={{
+                    background: selectedGenres.includes(g) ? "var(--color-text)" : "transparent",
+                    color: selectedGenres.includes(g) ? "#fff" : "var(--color-text3)",
+                    borderColor: selectedGenres.includes(g) ? "var(--color-text)" : "#e0e0de",
+                    fontFamily: "inherit",
+                  }}
+                >{g}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>BPM (opcional)</label>
+              <input type="number" value={bpm} onChange={(e) => setBpm(e.target.value)}
+                className={inputClass()} style={{ fontFamily: "inherit" }} />
+            </div>
+            <div>
+              <label className={labelClass}>Data de lancamento</label>
+              <input type="date" value={dataLancamento} onChange={(e) => setDataLancamento(e.target.value)}
+                className={inputClass()} style={{ fontFamily: "inherit" }} />
+            </div>
+          </div>
+
+          {/* Audio upload */}
+          <div>
+            <label className={labelClass}>Arquivo de audio</label>
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className={`rounded-[8px] p-5 text-center cursor-pointer border-2 border-dashed transition-colors ${
+                errors.audio ? "border-danger bg-danger-bg" : "border-border2 bg-bg hover:border-text3"
+              }`}
+            >
+              {audioFile ? (
+                <div>
+                  <p className="text-[13px] text-text font-medium">{audioFile.name}</p>
+                  <p className="text-[11px] text-success mt-1">Upload concluido</p>
+                </div>
+              ) : uploading ? (
+                <div>
+                  <p className="text-[13px] text-text3">Enviando...</p>
+                  <div className="mt-2 bg-bg3 rounded-[5px] h-[5px] overflow-hidden">
+                    <div className="h-full rounded-[5px] bg-text transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }} />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[13px] text-text3">
+                  Clique para selecionar<br />
+                  <span className="text-[11px] text-text4">WAV, MP3, AIFF, FLAC — max 100MB</span>
+                </p>
+              )}
+              <input ref={fileInputRef} type="file"
+                accept=".mp3,.wav,.aiff,.aif,.flac,audio/*" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleAudioSelect(f); }} />
+            </div>
+          </div>
+
+          <button type="button" onClick={nextStep}
+            className="w-full bg-text text-white border-none rounded-[6px] text-[13px] font-semibold px-[14px] py-[10px] cursor-pointer hover:opacity-90 transition-opacity"
+            style={{ fontFamily: "inherit" }}>
+            Proximo
+          </button>
+        </div>
+      )}
+
+      {/* ── STEP 2: Dados dos artistas ── */}
+      {step === 2 && (
+        <div className="flex flex-col gap-4">
+          <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em]">
+            Dados dos artistas
+          </p>
+
+          {artistEntries.map((artist, idx) => (
+            <div key={idx} className="border border-border rounded-[8px] p-4 flex flex-col gap-3">
+              <p className="text-[13px] font-bold text-text">Artista {idx + 1}</p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Nome artistico</label>
+                  <input type="text" value={artist.nomeArtistico}
+                    onChange={(e) => { const a = [...artistEntries]; a[idx].nomeArtistico = e.target.value; setArtistEntries(a); }}
+                    className={inputClass(idx === 0 ? "artist0name" : undefined)} style={{ fontFamily: "inherit" }} />
+                </div>
+                <div>
+                  <label className={labelClass}>Nome completo</label>
+                  <input type="text" value={artist.nomeCompleto}
+                    onChange={(e) => { const a = [...artistEntries]; a[idx].nomeCompleto = e.target.value; setArtistEntries(a); }}
+                    className={inputClass()} style={{ fontFamily: "inherit" }} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>CPF</label>
+                  <input type="text" value={artist.cpf} placeholder="000.000.000-00"
+                    onChange={(e) => { const a = [...artistEntries]; a[idx].cpf = cpfMask(e.target.value); setArtistEntries(a); }}
+                    className={inputClass()} style={{ fontFamily: "inherit" }} />
+                </div>
+                <div>
+                  <label className={labelClass}>Data de nascimento</label>
+                  <input type="date" value={artist.dataNascimento}
+                    onChange={(e) => { const a = [...artistEntries]; a[idx].dataNascimento = e.target.value; setArtistEntries(a); }}
+                    className={inputClass()} style={{ fontFamily: "inherit" }} />
+                </div>
+              </div>
+
+              <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mt-2">Redes sociais</p>
+              <div className="grid grid-cols-2 gap-3">
+                {(["instagram", "tiktok", "twitter", "facebook"] as const).map((k) => (
+                  <div key={k}>
+                    <label className={labelClass}>{k === "twitter" ? "X / Twitter" : k.charAt(0).toUpperCase() + k.slice(1)}</label>
+                    <input type="text" value={artist[k]} placeholder={k === "facebook" ? "URL" : "@usuario"}
+                      onChange={(e) => { const a = [...artistEntries]; (a[idx] as unknown as Record<string, string>)[k] = e.target.value; setArtistEntries(a); }}
+                      className={inputClass()} style={{ fontFamily: "inherit" }} />
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mt-2">Perfis nas lojas</p>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  ["spotify", "Spotify"], ["appleMusic", "Apple Music"],
+                  ["deezer", "Deezer"], ["youtubeMusic", "YouTube Music"],
+                  ["amazonMusic", "Amazon Music"],
+                ] as const).map(([k, label]) => (
+                  <div key={k}>
+                    <label className={labelClass}>{label}</label>
+                    <input type="text" value={artist[k]} placeholder="URL"
+                      onChange={(e) => { const a = [...artistEntries]; (a[idx] as unknown as Record<string, string>)[k] = e.target.value; setArtistEntries(a); }}
+                      className={inputClass()} style={{ fontFamily: "inherit" }} />
+                  </div>
+                ))}
               </div>
             </div>
-          ) : (
-            <p className="text-[13px] text-text3">
-              Arraste o arquivo ou clique para selecionar
-              <br />
-              <span className="text-[11px] text-text4">
-                MP3, WAV ou AIFF — max 50MB
-              </span>
-            </p>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".mp3,.wav,.aiff,audio/mpeg,audio/wav,audio/aiff"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFileSelect(file);
-            }}
-          />
+          ))}
+
+          <button type="button"
+            onClick={() => setArtistEntries([...artistEntries, emptyArtist()])}
+            className="text-[12px] text-text3 hover:text-text bg-transparent border border-dashed border-border2 rounded-[6px] py-2 cursor-pointer transition-colors"
+            style={{ fontFamily: "inherit" }}>
+            + Adicionar artista
+          </button>
+
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setStep(1)}
+              className="flex-1 bg-transparent text-neutral border border-[#e0e0de] rounded-[6px] text-[13px] font-semibold py-[8px] cursor-pointer"
+              style={{ fontFamily: "inherit" }}>Voltar</button>
+            <button type="button" onClick={nextStep}
+              className="flex-1 bg-text text-white border-none rounded-[6px] text-[13px] font-semibold py-[8px] cursor-pointer hover:opacity-90"
+              style={{ fontFamily: "inherit" }}>Proximo</button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* LGPD consent */}
-      <label className="flex gap-2 items-start cursor-pointer">
-        <input
-          type="checkbox"
-          required
-          className="mt-0.5 flex-shrink-0"
-          style={{ accentColor: "#1a1a1a" }}
-        />
-        <span className="text-[12px] text-text3 leading-relaxed">
-          Concordo com o{" "}
-          <a
-            href="/privacidade"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-text2 underline"
-          >
-            tratamento dos meus dados
-          </a>{" "}
-          conforme a LGPD. Meus dados serao usados exclusivamente para
-          avaliacao desta demo.
-        </span>
-      </label>
+      {/* ── STEP 3: Royalties ── */}
+      {step === 3 && (
+        <div className="flex flex-col gap-4">
+          <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em]">
+            Royalties share
+          </p>
 
-      {/* Submit button */}
-      <button
-        type="submit"
-        disabled={submitting}
-        className={`
-          w-full bg-text text-white border-none rounded-[6px]
-          text-[13px] font-semibold px-[14px] py-[10px]
-          cursor-pointer transition-opacity duration-[120ms]
-          ${submitting ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"}
-        `}
-      >
-        {submitting ? "Enviando..." : "Enviar demo"}
-      </button>
-    </form>
+          {royaltyEntries.map((r, idx) => (
+            <div key={idx} className="border border-border rounded-[8px] p-4 flex flex-col gap-3">
+              <p className="text-[13px] font-bold text-text">Autor {idx + 1}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Artista</label>
+                  <input type="text" value={r.artista}
+                    onChange={(e) => { const a = [...royaltyEntries]; a[idx].artista = e.target.value; setRoyaltyEntries(a); }}
+                    className={inputClass()} style={{ fontFamily: "inherit" }} />
+                </div>
+                <div>
+                  <label className={labelClass}>Royalties (%)</label>
+                  <input type="number" value={r.percentual} min="0" max="100"
+                    onChange={(e) => { const a = [...royaltyEntries]; a[idx].percentual = e.target.value; setRoyaltyEntries(a); }}
+                    className={inputClass()} style={{ fontFamily: "inherit" }} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Nome completo</label>
+                  <input type="text" value={r.nomeCompleto}
+                    onChange={(e) => { const a = [...royaltyEntries]; a[idx].nomeCompleto = e.target.value; setRoyaltyEntries(a); }}
+                    className={inputClass()} style={{ fontFamily: "inherit" }} />
+                </div>
+                <div>
+                  <label className={labelClass}>CPF</label>
+                  <input type="text" value={r.cpf} placeholder="000.000.000-00"
+                    onChange={(e) => { const a = [...royaltyEntries]; a[idx].cpf = cpfMask(e.target.value); setRoyaltyEntries(a); }}
+                    className={inputClass()} style={{ fontFamily: "inherit" }} />
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <div className="flex items-center justify-between">
+            <button type="button"
+              onClick={() => setRoyaltyEntries([...royaltyEntries, emptyRoyalty()])}
+              className="text-[12px] text-text3 hover:text-text bg-transparent border-none cursor-pointer"
+              style={{ fontFamily: "inherit" }}>
+              + Adicionar autor
+            </button>
+            <span className={`text-[12px] font-bold ${Math.abs(royaltyTotal - 100) < 0.01 ? "text-success" : "text-text3"}`}>
+              Total: {royaltyTotal}% / 100%
+            </span>
+          </div>
+
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setStep(2)}
+              className="flex-1 bg-transparent text-neutral border border-[#e0e0de] rounded-[6px] text-[13px] font-semibold py-[8px] cursor-pointer"
+              style={{ fontFamily: "inherit" }}>Voltar</button>
+            <button type="button" onClick={nextStep}
+              className="flex-1 bg-text text-white border-none rounded-[6px] text-[13px] font-semibold py-[8px] cursor-pointer hover:opacity-90"
+              style={{ fontFamily: "inherit" }}>Revisar</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── STEP 4: Review ── */}
+      {step === 4 && (
+        <div className="flex flex-col gap-4">
+          <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em]">
+            Revisao
+          </p>
+
+          {/* Summary */}
+          <div className="bg-bg2 border border-border rounded-[8px] p-4 flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              {coverFile && (
+                <img src={coverFile.url} alt="" className="w-12 h-12 rounded-[4px] object-cover" />
+              )}
+              <div>
+                <p className="text-[15px] font-bold text-text">{trackTitle}</p>
+                <p className="text-[13px] text-text2">{artistNameMain}</p>
+              </div>
+            </div>
+            {audioFile && <p className="text-[11px] text-text3">Arquivo: {audioFile.name}</p>}
+            {selectedGenres.length > 0 && (
+              <p className="text-[11px] text-text3">Genero: {selectedGenres.join(", ")}</p>
+            )}
+          </div>
+
+          {/* Artists */}
+          {artistEntries.filter((a) => a.nomeArtistico).map((a, i) => (
+            <div key={i} className="bg-bg2 border border-border rounded-[8px] p-3">
+              <p className="text-[13px] font-bold text-text">{a.nomeArtistico}</p>
+              {a.nomeCompleto && <p className="text-[11px] text-text3">{a.nomeCompleto}</p>}
+            </div>
+          ))}
+
+          {/* Royalties */}
+          {royaltyEntries.filter((r) => r.artista).length > 0 && (
+            <div className="bg-bg2 border border-border rounded-[8px] p-3">
+              <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-1">Royalties</p>
+              {royaltyEntries.filter((r) => r.artista).map((r, i) => (
+                <p key={i} className="text-[12px] text-text">{r.artista}: {r.percentual}%</p>
+              ))}
+            </div>
+          )}
+
+          {/* LGPD */}
+          <label className="flex gap-2 items-start cursor-pointer">
+            <input type="checkbox" required className="mt-0.5 flex-shrink-0" style={{ accentColor: "#1a1a1a" }} />
+            <span className="text-[12px] text-text3 leading-relaxed">
+              Concordo com o{" "}
+              <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="text-text2 underline">
+                tratamento dos meus dados
+              </a>{" "}conforme a LGPD.
+            </span>
+          </label>
+
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setStep(3)}
+              className="flex-1 bg-transparent text-neutral border border-[#e0e0de] rounded-[6px] text-[13px] font-semibold py-[8px] cursor-pointer"
+              style={{ fontFamily: "inherit" }}>Voltar</button>
+            <button type="button" onClick={handleSubmit} disabled={submitting}
+              className={`flex-1 bg-text text-white border-none rounded-[6px] text-[13px] font-semibold py-[10px] cursor-pointer transition-opacity ${submitting ? "opacity-50" : "hover:opacity-90"}`}
+              style={{ fontFamily: "inherit" }}>
+              {submitting ? "Enviando..." : "Salvar e enviar"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
