@@ -3,8 +3,10 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import { submissions, labels } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { submissionStatusSchema } from "@/lib/schemas";
+import { sendStatusUpdate } from "@/lib/email";
 
-async function getLabelId(): Promise<string | null> {
+async function getLabel() {
   const { orgId } = await auth();
   if (!orgId) return null;
   const [label] = await db
@@ -12,44 +14,60 @@ async function getLabelId(): Promise<string | null> {
     .from(labels)
     .where(eq(labels.clerkOrgId, orgId))
     .limit(1);
-  return label?.id ?? null;
+  return label ?? null;
 }
 
-// PATCH — update submission status (tenant-isolated)
+// PATCH — update submission status (tenant-isolated + email)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const labelId = await getLabelId();
-    if (!labelId) {
+    const label = await getLabel();
+    if (!label) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = params;
     const body = await req.json();
-    const { status } = body;
+    const parsed = submissionStatusSchema.safeParse(body);
 
-    const validStatuses = ["pending", "reviewing", "approved", "rejected"];
-    if (!validStatuses.includes(status)) {
-      return NextResponse.json({ error: "Status inválido" }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Dados invalidos", details: parsed.error.flatten() },
+        { status: 400 }
+      );
     }
 
-    // Only update if submission belongs to this label
+    const { status, rejectionMessage } = parsed.data;
+
     const [updated] = await db
       .update(submissions)
       .set({
         status,
+        rejectionMessage: status === "rejected" ? rejectionMessage || null : null,
         reviewedAt:
           status === "approved" || status === "rejected" ? new Date() : null,
       })
-      .where(and(eq(submissions.id, id), eq(submissions.labelId, labelId)))
+      .where(and(eq(submissions.id, id), eq(submissions.labelId, label.id)))
       .returning();
 
     if (!updated) {
       return NextResponse.json(
-        { error: "Submission não encontrada" },
+        { error: "Submission nao encontrada" },
         { status: 404 }
+      );
+    }
+
+    // Fire-and-forget: send email to artist on approval/rejection
+    if (status === "approved" || status === "rejected") {
+      sendStatusUpdate(
+        updated.artistEmail,
+        updated.artistName,
+        updated.trackTitle,
+        label.name,
+        status,
+        rejectionMessage
       );
     }
 
@@ -69,8 +87,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const labelId = await getLabelId();
-    if (!labelId) {
+    const label = await getLabel();
+    if (!label) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -78,12 +96,12 @@ export async function GET(
     const [submission] = await db
       .select()
       .from(submissions)
-      .where(and(eq(submissions.id, id), eq(submissions.labelId, labelId)))
+      .where(and(eq(submissions.id, id), eq(submissions.labelId, label.id)))
       .limit(1);
 
     if (!submission) {
       return NextResponse.json(
-        { error: "Submission não encontrada" },
+        { error: "Submission nao encontrada" },
         { status: 404 }
       );
     }

@@ -1,12 +1,15 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { NotificationBell } from "./notification-bell";
 
 const pageTitles: Record<string, string> = {
   "/dashboard/submissions": "Submissions",
   "/dashboard/artists": "Artists",
   "/dashboard/trending": "Trending",
   "/dashboard/settings/ai": "Settings",
+  "/dashboard/settings/portal": "Portal",
+  "/dashboard/onboarding": "Onboarding",
 };
 
 export function Header() {
@@ -23,6 +26,7 @@ export function Header() {
       <h1 className="text-[22px] font-bold text-text tracking-[-0.3px]">
         {title}
       </h1>
+      <NotificationBell />
     </header>
   );
 }

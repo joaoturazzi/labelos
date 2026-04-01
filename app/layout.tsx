@@ -10,8 +10,9 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "LabelOS",
-  description: "Sistema de gestão para gravadoras independentes",
+  title: { default: "LabelOS", template: "%s — LabelOS" },
+  description: "Sistema de gestao para gravadoras independentes",
+  robots: "noindex, nofollow",
 };
 
 export default function RootLayout({

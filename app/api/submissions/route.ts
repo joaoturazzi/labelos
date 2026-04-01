@@ -1,77 +1,103 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { submissions, labels } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
+import { submissionSchema } from "@/lib/schemas";
+import { sendSubmissionConfirmation } from "@/lib/email";
+import { createNotification } from "@/lib/notifications";
 
-// POST — create a new submission (called from public portal — no auth)
+// POST — create a new submission (public portal — no auth)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const parsed = submissionSchema.safeParse(body);
 
-    const {
-      labelId,
-      artistName,
-      artistEmail,
-      trackTitle,
-      genre,
-      bpm,
-      mixador,
-      distributor,
-      instagramUrl,
-      tiktokUrl,
-      spotifyUrl,
-      youtubeUrl,
-      audioFileUrl,
-      audioFileKey,
-    } = body;
-
-    if (!labelId || !artistName?.trim() || !artistEmail?.trim() || !trackTitle?.trim() || !audioFileUrl || !audioFileKey) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Campos obrigatórios faltando" },
+        { error: "Dados invalidos", details: parsed.error.flatten() },
         { status: 400 }
       );
     }
+
+    const data = parsed.data;
 
     // Verify label exists
     const [label] = await db
       .select()
       .from(labels)
-      .where(eq(labels.id, labelId))
+      .where(eq(labels.id, data.labelId))
       .limit(1);
 
     if (!label) {
-      return NextResponse.json({ error: "Label não encontrada" }, { status: 404 });
+      return NextResponse.json({ error: "Label nao encontrada" }, { status: 404 });
+    }
+
+    // Check for duplicate submission
+    const existing = await db
+      .select({ id: submissions.id })
+      .from(submissions)
+      .where(
+        and(
+          eq(submissions.labelId, data.labelId),
+          eq(submissions.artistEmail, data.artistEmail),
+          eq(submissions.trackTitle, data.trackTitle)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      return NextResponse.json(
+        { error: "Esta track ja foi enviada para esta gravadora." },
+        { status: 409 }
+      );
     }
 
     const [submission] = await db
       .insert(submissions)
       .values({
-        labelId,
-        artistName: artistName.trim(),
-        artistEmail: artistEmail.trim(),
-        trackTitle: trackTitle.trim(),
-        genre: genre || null,
-        bpm: bpm ? parseInt(bpm, 10) : null,
-        mixador: mixador?.trim() || null,
-        distributor: distributor?.trim() || null,
-        instagramUrl: instagramUrl?.trim() || null,
-        tiktokUrl: tiktokUrl?.trim() || null,
-        spotifyUrl: spotifyUrl?.trim() || null,
-        youtubeUrl: youtubeUrl?.trim() || null,
-        audioFileUrl,
-        audioFileKey,
+        labelId: data.labelId,
+        artistName: data.artistName.trim(),
+        artistEmail: data.artistEmail.trim(),
+        trackTitle: data.trackTitle.trim(),
+        genre: data.genre || null,
+        bpm: data.bpm || null,
+        mixador: data.mixador?.trim() || null,
+        distributor: data.distributor?.trim() || null,
+        instagramUrl: data.instagramUrl?.trim() || null,
+        tiktokUrl: data.tiktokUrl?.trim() || null,
+        spotifyUrl: data.spotifyUrl?.trim() || null,
+        youtubeUrl: data.youtubeUrl?.trim() || null,
+        audioFileUrl: data.audioFileUrl,
+        audioFileKey: data.audioFileKey,
         status: "pending",
+        lgpdConsentAt: data.lgpdConsent ? new Date() : null,
       })
       .returning();
 
-    // Fire-and-forget AI analysis
+    // Fire-and-forget: AI analysis
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     fetch(`${appUrl}/api/ai/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ submissionId: submission.id }),
     }).catch((err) => console.error("AI analyze trigger failed:", err));
+
+    // Fire-and-forget: emails + notification
+    sendSubmissionConfirmation(
+      data.artistEmail,
+      data.artistName,
+      data.trackTitle,
+      label.name
+    );
+
+    createNotification(
+      label.id,
+      "new_submission",
+      `Nova demo: ${data.trackTitle}`,
+      `${data.artistName} enviou uma demo`,
+      "/dashboard/submissions"
+    );
 
     return NextResponse.json(submission, { status: 201 });
   } catch (err) {

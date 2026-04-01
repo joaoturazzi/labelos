@@ -153,6 +153,7 @@ export function SubmissionForm({ labelId, labelName }: Props) {
           bpm: form.bpm || null,
           audioFileUrl: audioFile!.url,
           audioFileKey: audioFile!.key,
+          lgpdConsent: true,
         }),
       });
 
@@ -368,6 +369,29 @@ export function SubmissionForm({ labelId, labelName }: Props) {
           />
         </div>
       </div>
+
+      {/* LGPD consent */}
+      <label className="flex gap-2 items-start cursor-pointer">
+        <input
+          type="checkbox"
+          required
+          className="mt-0.5 flex-shrink-0"
+          style={{ accentColor: "#1a1a1a" }}
+        />
+        <span className="text-[12px] text-text3 leading-relaxed">
+          Concordo com o{" "}
+          <a
+            href="/privacidade"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-text2 underline"
+          >
+            tratamento dos meus dados
+          </a>{" "}
+          conforme a LGPD. Meus dados serao usados exclusivamente para
+          avaliacao desta demo.
+        </span>
+      </label>
 
       {/* Submit button */}
       <button

@@ -17,10 +17,23 @@ export const labels = pgTable("labels", {
   name: text("name").notNull(),
   slug: text("slug").unique().notNull(),
   plan: text("plan").default("free"),
+  // Portal customization
+  logoUrl: text("logo_url"),
+  accentColor: text("accent_color").default("#1a1a1a"),
+  portalHeadline: text("portal_headline"),
+  portalSubtext: text("portal_subtext"),
+  contactEmail: text("contact_email"),
+  // Onboarding
+  onboardingCompleted: boolean("onboarding_completed").default(false),
+  // Scraping monitoring
+  lastScrapingAt: timestamp("last_scraping_at"),
+  lastScrapingStatus: text("last_scraping_status"),
+  scrapingErrorLog: text("scraping_error_log"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 // ── Submissions (demos recebidas) ────────────────────────────────────
+// status: pending | reviewing | approved | rejected
 export const submissions = pgTable("submissions", {
   id: uuid("id").primaryKey().defaultRandom(),
   labelId: uuid("label_id").references(() => labels.id),
@@ -38,9 +51,11 @@ export const submissions = pgTable("submissions", {
   audioFileUrl: text("audio_file_url").notNull(),
   audioFileKey: text("audio_file_key").notNull(),
   status: text("status").default("pending"),
+  rejectionMessage: text("rejection_message"),
   aiScore: integer("ai_score"),
   aiSummary: text("ai_summary"),
   aiCriteriaUsed: jsonb("ai_criteria_used"),
+  lgpdConsentAt: timestamp("lgpd_consent_at"),
   submittedAt: timestamp("submitted_at").defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
 });
@@ -140,4 +155,17 @@ export const artistInsights = pgTable("artist_insights", {
   severity: text("severity").notNull().default("info"),
   isRead: boolean("is_read").default(false),
   generatedAt: timestamp("generated_at").defaultNow(),
+});
+
+// ── Notifications ────────────────────────────────────────────────────
+// type: new_submission | insight | scraping_complete | ai_score_ready
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  labelId: uuid("label_id").references(() => labels.id),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  body: text("body"),
+  link: text("link"),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
 });
