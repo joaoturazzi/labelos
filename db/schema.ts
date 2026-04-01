@@ -192,3 +192,10 @@ export const notifications = pgTable("notifications", {
   isRead: boolean("is_read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// ── Rate Limits ──────────────────────────────────────────────────────
+export const rateLimits = pgTable("rate_limits", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: text("key").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

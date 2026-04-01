@@ -41,10 +41,6 @@ export const env = {
   RESEND_API_KEY: optionalEnv("RESEND_API_KEY"),
   EMAIL_FROM: optionalEnv("EMAIL_FROM") || "noreply@labelos.com.br",
 
-  // Upstash (optional — rate limiting)
-  UPSTASH_REDIS_REST_URL: optionalEnv("UPSTASH_REDIS_REST_URL"),
-  UPSTASH_REDIS_REST_TOKEN: optionalEnv("UPSTASH_REDIS_REST_TOKEN"),
-
   // Netlify
   NETLIFY_FUNCTION_SECRET: optionalEnv("NETLIFY_FUNCTION_SECRET"),
 
