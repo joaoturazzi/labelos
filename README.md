@@ -46,7 +46,7 @@ cp .env.local .env.local.bak
 #### UploadThing
 1. Criar conta em [uploadthing.com](https://uploadthing.com)
 2. Criar app
-3. Copiar `UPLOADTHING_SECRET` e `UPLOADTHING_APP_ID`
+3. Copiar o `UPLOADTHING_TOKEN` (base64 na dashboard do UploadThing)
 
 #### OpenRouter
 1. Criar conta em [openrouter.ai](https://openrouter.ai)

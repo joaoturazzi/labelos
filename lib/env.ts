@@ -26,8 +26,7 @@ export const env = {
   DATABASE_URL: requireEnv("DATABASE_URL"),
 
   // UploadThing
-  UPLOADTHING_SECRET: optionalEnv("UPLOADTHING_SECRET"),
-  UPLOADTHING_APP_ID: optionalEnv("UPLOADTHING_APP_ID"),
+  UPLOADTHING_TOKEN: requireEnv("UPLOADTHING_TOKEN"),
 
   // OpenRouter
   OPENROUTER_API_KEY: requireEnv("OPENROUTER_API_KEY"),
