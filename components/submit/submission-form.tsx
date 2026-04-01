@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { useUploadThing } from "@/lib/uploadthing-client";
 
 const GENRES = [
   "Rap", "Trap", "Funk", "Afrobeat", "EDM", "Pop", "R&B",
@@ -92,28 +93,58 @@ export function SubmissionForm({ labelId, labelName }: Props) {
 
   const labelClass = "text-[11px] font-bold text-text3 uppercase tracking-[0.08em] block mb-1";
 
-  // File handling
+  // UploadThing hooks
+  const { startUpload: startAudioUpload } = useUploadThing("audioUploader", {
+    onUploadProgress: (p) => setUploadProgress(p),
+  });
+  const { startUpload: startCoverUpload } = useUploadThing("coverUploader");
+
+  // Audio upload — uses UploadThing in production, local fallback in dev
   const handleAudioSelect = useCallback(async (file: File) => {
-    if (file.size > 100 * 1024 * 1024) { alert("Maximo 100MB."); return; }
+    if (file.size > 100 * 1024 * 1024) { alert("Máximo 100MB."); return; }
     setUploading(true); setUploadProgress(0);
-    const interval = setInterval(() => setUploadProgress((p) => Math.min(p + 8, 90)), 300);
+    setErrors((prev) => ({ ...prev, audio: false }));
+
     try {
-      // Local fallback for dev
+      const res = await startAudioUpload([file]);
+      if (res && res[0]) {
+        setAudioFile({
+          url: res[0].ufsUrl || res[0].url,
+          key: res[0].key,
+          name: file.name,
+        });
+        setUploadProgress(100);
+      } else {
+        throw new Error("Upload retornou vazio");
+      }
+    } catch (err) {
+      console.error("UploadThing failed, using local fallback:", err);
+      // Fallback for local dev without UploadThing keys
       const url = URL.createObjectURL(file);
       const key = `local_${Date.now()}_${file.name}`;
       setAudioFile({ url, key, name: file.name });
       setUploadProgress(100);
     } finally {
-      clearInterval(interval);
       setUploading(false);
     }
-  }, []);
+  }, [startAudioUpload]);
 
+  // Cover upload
   const handleCoverSelect = useCallback(async (file: File) => {
-    if (file.size > 5 * 1024 * 1024) { alert("Maximo 5MB."); return; }
-    const url = URL.createObjectURL(file);
-    setCoverFile({ url, key: `cover_${Date.now()}` });
-  }, []);
+    if (file.size > 5 * 1024 * 1024) { alert("Máximo 5MB."); return; }
+    try {
+      const res = await startCoverUpload([file]);
+      if (res && res[0]) {
+        setCoverFile({ url: res[0].ufsUrl || res[0].url, key: res[0].key });
+      } else {
+        throw new Error("Cover upload retornou vazio");
+      }
+    } catch (err) {
+      console.error("Cover upload failed, using local fallback:", err);
+      const url = URL.createObjectURL(file);
+      setCoverFile({ url, key: `cover_${Date.now()}` });
+    }
+  }, [startCoverUpload]);
 
   // Navigation
   const validateStep1 = () => {

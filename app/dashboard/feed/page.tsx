@@ -296,7 +296,7 @@ function SidebarPanel({
 }: {
   insights: FeedInsight[];
   artistMap: Record<string, string>;
-  topArtists: { id: string; name: string; growth: number }[];
+  topArtists: { id: string; name: string; growth: number; engagement: number }[];
   stats: { postsToday: number; totalViews: number; activeArtists: number; unreadInsights: number };
 }) {
   return (
@@ -353,7 +353,7 @@ function SidebarPanel({
                     color: "var(--color-success)",
                   }}
                 >
-                  +{a.growth.toFixed(1)}%
+                  {formatNumber(a.engagement)}
                 </span>
               </div>
             ))}
@@ -529,10 +529,18 @@ export default function FeedPage() {
       }
     }
   }
+  // Calculate engagement rank by total interactions (real data, not random)
+  const maxTotal = Math.max(...[...artistGrowthMap.values()].map((v) => v.total), 1);
   const topArtists = [...artistGrowthMap.entries()]
-    .map(([id, { name, total }]) => ({ id, name, growth: total > 0 ? Math.random() * 20 + 5 : 0 }))
-    .filter((a) => a.growth > 0)
-    .sort((a, b) => b.growth - a.growth)
+    .map(([id, { name, total }]) => ({
+      id,
+      name,
+      engagement: total,
+      // Show as percentage of top performer
+      growth: maxTotal > 0 ? (total / maxTotal) * 100 : 0,
+    }))
+    .filter((a) => a.engagement > 0)
+    .sort((a, b) => b.engagement - a.engagement)
     .slice(0, 3);
 
   return (
