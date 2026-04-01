@@ -54,15 +54,27 @@ async function analyzeSubmission(submissionId: string) {
 
   try {
     console.log("[AI] Baixando áudio:", submission.audioFileUrl);
-    const audioRes = await fetch(submission.audioFileUrl);
-    if (audioRes.ok) {
-      const buffer = await audioRes.arrayBuffer();
-      audioBase64 = Buffer.from(buffer).toString("base64");
+    const audioRes = await Promise.race([
+      fetch(submission.audioFileUrl),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout ao baixar áudio")), 30000)
+      ),
+    ]) as Response;
 
-      const fileName = submission.audioFileUrl.split("/").pop() || "";
-      if (fileName.endsWith(".wav")) mimeType = "audio/wav";
-      else if (fileName.endsWith(".aiff") || fileName.endsWith(".aif")) mimeType = "audio/aiff";
-      else if (fileName.endsWith(".flac")) mimeType = "audio/flac";
+    if (audioRes.ok) {
+      // Check size before downloading (max 50mb for AI)
+      const contentLength = audioRes.headers.get("content-length");
+      if (contentLength && parseInt(contentLength) > 50 * 1024 * 1024) {
+        console.log("[AI] Áudio muito grande para IA, usando fallback de metadados");
+      } else {
+        const buffer = await audioRes.arrayBuffer();
+        audioBase64 = Buffer.from(buffer).toString("base64");
+
+        const fileName = submission.audioFileUrl.split("/").pop() || "";
+        if (fileName.endsWith(".wav")) mimeType = "audio/wav";
+        else if (fileName.endsWith(".aiff") || fileName.endsWith(".aif")) mimeType = "audio/aiff";
+        else if (fileName.endsWith(".flac")) mimeType = "audio/flac";
+      }
     }
   } catch (err) {
     console.error("[AI] Falha ao baixar áudio:", err);

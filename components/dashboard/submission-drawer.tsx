@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { X, ExternalLink } from "lucide-react";
 import { AudioPlayer } from "./audio-player";
 
@@ -102,6 +102,33 @@ function SocialLink({ url, label }: { url: string | null; label: string }) {
 }
 
 export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props) {
+  // Local state for polling AI score updates
+  const [localData, setLocalData] = useState(submission);
+
+  // Sync when parent passes new submission
+  useEffect(() => {
+    if (submission) setLocalData(submission);
+  }, [submission]);
+
+  // Poll for AI score if not yet available
+  useEffect(() => {
+    if (!localData || localData.aiScore !== null) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/submissions/${localData.id}`);
+        if (res.ok) {
+          const updated = await res.json();
+          if (updated.aiScore !== null) {
+            setLocalData(updated);
+          }
+        }
+      } catch {}
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, [localData?.id, localData?.aiScore]);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -122,7 +149,9 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
 
   if (!submission) return null;
 
-  const criteria = submission.aiCriteriaUsed as Record<string, unknown> | null;
+  // Use localData which gets updated by polling
+  const sub = localData || submission;
+  const criteria = sub.aiCriteriaUsed as Record<string, unknown> | null;
   const pontosFortes = (criteria?.pontos_fortes as string[]) || [];
   const pontosFracos = (criteria?.pontos_fracos as string[]) || [];
   const recomendacao = criteria?.recomendacao as string | undefined;
@@ -151,12 +180,12 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-[15px] font-bold text-text truncate">
-                {submission.artistName}
+                {sub.artistName}
               </h2>
-              <StatusBadge status={submission.status} />
+              <StatusBadge status={sub.status} />
             </div>
             <p className="text-[13px] text-text2 truncate">
-              {submission.trackTitle}
+              {sub.trackTitle}
             </p>
           </div>
           <button
@@ -174,9 +203,9 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
               Player
             </p>
             <AudioPlayer
-              url={submission.audioFileUrl}
-              trackTitle={submission.trackTitle}
-              artistName={submission.artistName}
+              url={sub.audioFileUrl}
+              trackTitle={sub.trackTitle}
+              artistName={sub.artistName}
             />
           </div>
 
@@ -188,34 +217,34 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-bg2 border border-border rounded-[8px] p-3">
                 <p className="text-[11px] text-text4 mb-0.5">Genero</p>
-                <p className="text-[13px] text-text">{submission.genre || "—"}</p>
+                <p className="text-[13px] text-text">{sub.genre || "—"}</p>
               </div>
               <div className="bg-bg2 border border-border rounded-[8px] p-3">
                 <p className="text-[11px] text-text4 mb-0.5">BPM</p>
-                <p className="text-[13px] text-text">{submission.bpm || "—"}</p>
+                <p className="text-[13px] text-text">{sub.bpm || "—"}</p>
               </div>
               <div className="bg-bg2 border border-border rounded-[8px] p-3">
                 <p className="text-[11px] text-text4 mb-0.5">Mixador</p>
-                <p className="text-[13px] text-text">{submission.mixador || "—"}</p>
+                <p className="text-[13px] text-text">{sub.mixador || "—"}</p>
               </div>
               <div className="bg-bg2 border border-border rounded-[8px] p-3">
                 <p className="text-[11px] text-text4 mb-0.5">Distribuidora</p>
-                <p className="text-[13px] text-text">{submission.distributor || "—"}</p>
+                <p className="text-[13px] text-text">{sub.distributor || "—"}</p>
               </div>
             </div>
           </div>
 
           {/* Social links */}
-          {(submission.instagramUrl || submission.tiktokUrl || submission.spotifyUrl || submission.youtubeUrl) && (
+          {(sub.instagramUrl || sub.tiktokUrl || sub.spotifyUrl || sub.youtubeUrl) && (
             <div>
               <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-2">
                 Redes sociais
               </p>
               <div className="flex flex-wrap gap-3">
-                <SocialLink url={submission.instagramUrl} label="Instagram" />
-                <SocialLink url={submission.tiktokUrl} label="TikTok" />
-                <SocialLink url={submission.spotifyUrl} label="Spotify" />
-                <SocialLink url={submission.youtubeUrl} label="YouTube" />
+                <SocialLink url={sub.instagramUrl} label="Instagram" />
+                <SocialLink url={sub.tiktokUrl} label="TikTok" />
+                <SocialLink url={sub.spotifyUrl} label="Spotify" />
+                <SocialLink url={sub.youtubeUrl} label="YouTube" />
               </div>
             </div>
           )}
@@ -226,22 +255,22 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
               Resultado da IA
             </p>
 
-            {submission.aiScore === null && !submission.aiSummary ? (
+            {sub.aiScore === null && !sub.aiSummary ? (
               <div className="bg-bg2 border border-border rounded-[8px] p-4 text-center">
                 <div className="flex items-center justify-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-text4 animate-pulse" />
                   <p className="text-[13px] text-text4">Analisando...</p>
                 </div>
               </div>
-            ) : submission.aiScore !== null ? (
+            ) : sub.aiScore !== null ? (
               <div className="flex flex-col gap-3">
                 {/* Score + recommendation */}
                 <div className="grid grid-cols-2 gap-2.5">
                   <div className="bg-bg border border-border rounded-[8px] p-3">
                     <p className="text-[11px] text-text4 uppercase tracking-[0.05em] font-semibold">Score geral</p>
                     <p className="text-[26px] font-bold tracking-[-0.5px] mt-1" style={{
-                      color: submission.aiScore >= 70 ? "var(--color-success)" : submission.aiScore >= 40 ? "var(--color-warning)" : "var(--color-danger)"
-                    }}>{submission.aiScore}/100</p>
+                      color: sub.aiScore >= 70 ? "var(--color-success)" : sub.aiScore >= 40 ? "var(--color-warning)" : "var(--color-danger)"
+                    }}>{sub.aiScore}/100</p>
                   </div>
                   <div className="bg-bg border border-border rounded-[8px] p-3">
                     <p className="text-[11px] text-text4 uppercase tracking-[0.05em] font-semibold">Recomendacao</p>
@@ -297,7 +326,7 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
 
                 {/* Summary */}
                 <p className="text-[13px] text-text2 leading-relaxed">
-                  {submission.aiSummary}
+                  {sub.aiSummary}
                 </p>
 
                 {/* Strong/weak points */}
@@ -329,7 +358,7 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
               </div>
             ) : (
               <p className="text-[13px] text-text4 text-center py-4">
-                {submission.aiSummary || "Analisando..."}
+                {sub.aiSummary || "Analisando..."}
               </p>
             )}
           </div>
@@ -341,13 +370,13 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
             </p>
             <div className="flex gap-2">
               <button
-                onClick={() => onStatusChange(submission.id, "approved")}
-                disabled={submission.status === "approved"}
+                onClick={() => onStatusChange(sub.id, "approved")}
+                disabled={sub.status === "approved"}
                 className={`
                   flex-1 rounded-[6px] text-[13px] font-semibold px-[14px] py-[6px] cursor-pointer border-none
                   transition-opacity
                   ${
-                    submission.status === "approved"
+                    sub.status === "approved"
                       ? "opacity-50 cursor-not-allowed bg-text text-white"
                       : "bg-text text-white hover:opacity-90"
                   }
@@ -356,13 +385,13 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
                 Aprovar
               </button>
               <button
-                onClick={() => onStatusChange(submission.id, "reviewing")}
-                disabled={submission.status === "reviewing"}
+                onClick={() => onStatusChange(sub.id, "reviewing")}
+                disabled={sub.status === "reviewing"}
                 className={`
                   flex-1 rounded-[6px] text-[13px] font-semibold px-[14px] py-[6px] cursor-pointer
                   transition-opacity border
                   ${
-                    submission.status === "reviewing"
+                    sub.status === "reviewing"
                       ? "opacity-50 cursor-not-allowed bg-transparent text-neutral border-[#e0e0de]"
                       : "bg-transparent text-neutral border-[#e0e0de] hover:border-text3"
                   }
@@ -371,13 +400,13 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
                 Em analise
               </button>
               <button
-                onClick={() => onStatusChange(submission.id, "rejected")}
-                disabled={submission.status === "rejected"}
+                onClick={() => onStatusChange(sub.id, "rejected")}
+                disabled={sub.status === "rejected"}
                 className={`
                   flex-1 rounded-[6px] text-[13px] font-semibold px-[14px] py-[6px] cursor-pointer
                   transition-opacity border
                   ${
-                    submission.status === "rejected"
+                    sub.status === "rejected"
                       ? "opacity-50 cursor-not-allowed bg-danger-bg text-danger border-[#f5c6c6]"
                       : "bg-danger-bg text-danger border-[#f5c6c6] hover:opacity-80"
                   }
@@ -392,8 +421,8 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
           <div className="border-t border-border pt-3">
             <p className="text-[11px] text-text4">
               Enviado em{" "}
-              {submission.submittedAt
-                ? new Date(submission.submittedAt).toLocaleDateString("pt-BR", {
+              {sub.submittedAt
+                ? new Date(sub.submittedAt).toLocaleDateString("pt-BR", {
                     day: "2-digit",
                     month: "short",
                     year: "numeric",
@@ -403,7 +432,7 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
                 : "—"}
             </p>
             <p className="text-[11px] text-text4">
-              E-mail: {submission.artistEmail}
+              E-mail: {sub.artistEmail}
             </p>
           </div>
         </div>

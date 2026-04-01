@@ -15,6 +15,24 @@ export function AudioPlayer({ url, trackTitle, artistName }: AudioPlayerProps) {
   const [duration, setDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [browserSupports, setBrowserSupports] = useState(true);
+
+  // Check if browser supports the format
+  useEffect(() => {
+    const audio = document.createElement("audio");
+    const ext = url.split(".").pop()?.toLowerCase()?.split("?")[0] || "mp3";
+    const mimeMap: Record<string, string> = {
+      mp3: "audio/mpeg",
+      wav: "audio/wav",
+      flac: "audio/flac",
+      aiff: "audio/aiff",
+      aif: "audio/aiff",
+      ogg: "audio/ogg",
+    };
+    const mime = mimeMap[ext] || "audio/mpeg";
+    const canPlay = audio.canPlayType(mime);
+    setBrowserSupports(canPlay !== "");
+  }, [url]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -62,6 +80,31 @@ export function AudioPlayer({ url, trackTitle, artistName }: AudioPlayerProps) {
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  // Fallback for unsupported formats
+  if (!browserSupports) {
+    return (
+      <div className="bg-bg2 border border-border rounded-[8px] p-[14px_16px] text-center">
+        <div className="mb-3">
+          <div className="text-[13px] font-semibold text-text">{trackTitle}</div>
+          <div className="text-[11px] text-text3 mt-0.5">{artistName}</div>
+        </div>
+        <p className="text-[13px] text-text3 mb-3">
+          Este formato nao e suportado pelo browser.
+        </p>
+        <a
+          href={url}
+          download
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[12px] font-semibold px-3 py-1.5 no-underline rounded-[6px] transition-colors"
+          style={{ background: "#eaf2fb", color: "#1a5276", border: "1px solid #bdd3e8" }}
+        >
+          Baixar arquivo para ouvir
+        </a>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-bg2 border border-border rounded-[8px] p-[14px_16px]">
       <audio ref={audioRef} src={url} preload="metadata" />
@@ -72,7 +115,18 @@ export function AudioPlayer({ url, trackTitle, artistName }: AudioPlayerProps) {
       </div>
 
       {error ? (
-        <div className="text-[12px] text-danger">{error}</div>
+        <div>
+          <div className="text-[12px] text-danger mb-2">{error}</div>
+          <a
+            href={url}
+            download
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-text3 no-underline px-2 py-1 border border-border rounded-[4px] hover:border-text3 transition-colors"
+          >
+            Download
+          </a>
+        </div>
       ) : (
         <>
           <div

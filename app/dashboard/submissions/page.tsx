@@ -57,22 +57,30 @@ export default function SubmissionsPage() {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Fetch submissions (auth + tenant scoping handled by API)
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch("/api/submissions");
-        if (res.ok) {
-          setSubmissions(await res.json());
-        }
-      } catch (err) {
-        console.error("Failed to load:", err);
-      } finally {
-        setLoading(false);
-      }
+  const fetchSubmissions = async () => {
+    try {
+      const res = await fetch("/api/submissions");
+      if (res.ok) setSubmissions(await res.json());
+    } catch (err) {
+      console.error("Failed to load:", err);
     }
-    load();
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchSubmissions().finally(() => setLoading(false));
   }, []);
+
+  // Poll every 10s if there are submissions waiting for AI score
+  useEffect(() => {
+    const hasPending = submissions.some(
+      (s) => s.status === "pending" && s.aiScore === null
+    );
+    if (!hasPending) return;
+
+    const interval = setInterval(fetchSubmissions, 10000);
+    return () => clearInterval(interval);
+  }, [submissions]);
 
   const handleStatusChange = async (id: string, status: string) => {
     try {
