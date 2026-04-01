@@ -73,7 +73,7 @@ export function ArtistModal({ open, onClose, onSave, initial }: Props) {
     e.preventDefault();
 
     if (!form.name.trim()) {
-      setNameError("Nome e obrigatório");
+      setNameError("Nome é obrigatório");
       return;
     }
 

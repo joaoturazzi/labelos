@@ -13,8 +13,13 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 # NOTE: All secret environment variables must be set in
-# Netlify Dashboard → Site Settings → Environment Variables.
+# Netlify Dashboard -> Site Settings -> Environment Variables.
 # Required vars:
 # NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 # CLERK_SECRET_KEY
