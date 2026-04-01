@@ -6,10 +6,21 @@ import { auth } from "@clerk/nextjs/server";
 import { submissionSchema } from "@/lib/schemas";
 import { sendSubmissionConfirmation } from "@/lib/email";
 import { createNotification } from "@/lib/notifications";
+import { checkRateLimit } from "@/lib/rate-limit";
 
-// POST — create a new submission (public portal — no auth)
+// POST — create a new submission (public portal — no auth, rate limited)
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit: 5 submissions per IP per hour
+    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "anonymous";
+    const { success: withinLimit } = await checkRateLimit(`submit:${ip}`, 5);
+    if (!withinLimit) {
+      return NextResponse.json(
+        { error: "Muitas tentativas. Tente novamente em 1 hora." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const parsed = submissionSchema.safeParse(body);
 

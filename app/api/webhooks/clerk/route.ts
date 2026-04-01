@@ -8,7 +8,8 @@ export async function POST(req: Request) {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
   if (!WEBHOOK_SECRET) {
-    throw new Error("CLERK_WEBHOOK_SECRET is not set");
+    console.error("CLERK_WEBHOOK_SECRET is not set");
+    return new Response("Webhook secret not configured", { status: 500 });
   }
 
   const headerPayload = await headers();
@@ -37,16 +38,21 @@ export async function POST(req: Request) {
     return new Response("Invalid signature", { status: 400 });
   }
 
-  if (evt.type === "organization.created") {
-    const { id, name, slug } = evt.data;
+  try {
+    if (evt.type === "organization.created") {
+      const { id, name, slug } = evt.data;
 
-    await db.insert(labels).values({
-      clerkOrgId: id,
-      name,
-      slug: slug ?? id,
-    });
+      await db.insert(labels).values({
+        clerkOrgId: id,
+        name,
+        slug: slug ?? id,
+      });
 
-    console.log(`Label created for org: ${name} (${id})`);
+      console.log(`Label created for org: ${name} (${id})`);
+    }
+  } catch (err) {
+    console.error("Webhook processing failed:", err);
+    return new Response("Processing error", { status: 500 });
   }
 
   return new Response("OK", { status: 200 });

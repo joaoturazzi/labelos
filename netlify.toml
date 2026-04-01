@@ -12,3 +12,20 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
+
+# NOTE: All secret environment variables must be set in
+# Netlify Dashboard → Site Settings → Environment Variables.
+# Required vars:
+# NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+# CLERK_SECRET_KEY
+# CLERK_WEBHOOK_SECRET
+# DATABASE_URL
+# UPLOADTHING_SECRET
+# UPLOADTHING_APP_ID
+# OPENROUTER_API_KEY
+# APIFY_API_KEY
+# FIRECRAWL_API_KEY
+# RESEND_API_KEY
+# EMAIL_FROM
+# NEXT_PUBLIC_APP_URL
+# NETLIFY_FUNCTION_SECRET

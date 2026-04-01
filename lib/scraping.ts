@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { artists, artistSocials, artistPosts } from "@/db/schema";
+import { artists, artistSocials, artistPosts, labels } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { runApifyActor, APIFY_ACTORS } from "./apify";
 import { firecrawlScrape } from "./firecrawl";
@@ -499,6 +499,25 @@ export async function scrapeAllArtists(labelId: string): Promise<{
     } catch (err) {
       erros.push(`${artist.name}: ${(err as Error).message}`);
     }
+  }
+
+  // Update scraping status on label
+  try {
+    await db
+      .update(labels)
+      .set({
+        lastScrapingAt: new Date(),
+        lastScrapingStatus:
+          erros.length === 0
+            ? "success"
+            : erros.length < allArtists.length
+            ? "partial"
+            : "failed",
+        scrapingErrorLog: erros.length > 0 ? JSON.stringify(erros.slice(0, 20)) : null,
+      })
+      .where(eq(labels.id, labelId));
+  } catch (err) {
+    console.error("Failed to update scraping status:", err);
   }
 
   return {
