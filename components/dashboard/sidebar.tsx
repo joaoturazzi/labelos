@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Rss, Music, Users, TrendingUp, Settings, Palette, Menu, X } from "lucide-react";
+import { Rss, Music, Users, TrendingUp, BarChart3, Settings, Palette, Menu, X } from "lucide-react";
 
 const navItems = [
   { label: "Feed", href: "/dashboard/feed", icon: Rss },
   { label: "Submissions", href: "/dashboard/submissions", icon: Music },
   { label: "Artists", href: "/dashboard/artists", icon: Users },
   { label: "Trending", href: "/dashboard/trending", icon: TrendingUp },
+  { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
 ];
 
 const settingsItems = [

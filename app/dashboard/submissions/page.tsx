@@ -30,6 +30,10 @@ interface Submission {
   aiScore: number | null;
   aiSummary: string | null;
   aiCriteriaUsed: Record<string, unknown> | null;
+  pipelineStage: string | null;
+  pipelineAssignee: string | null;
+  pipelineDeadline: string | null;
+  pipelineHistory: unknown[] | null;
   submittedAt: string | null;
   reviewedAt: string | null;
 }

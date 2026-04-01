@@ -78,6 +78,12 @@ export const submissions = pgTable("submissions", {
   aiScore: integer("ai_score"),
   aiSummary: text("ai_summary"),
   aiCriteriaUsed: jsonb("ai_criteria_used"),
+  // Pipeline workflow
+  // stages: triage | review | committee | contract | approved | rejected
+  pipelineStage: text("pipeline_stage").default("triage"),
+  pipelineAssignee: text("pipeline_assignee"),
+  pipelineDeadline: timestamp("pipeline_deadline"),
+  pipelineHistory: jsonb("pipeline_history"),
   lgpdConsentAt: timestamp("lgpd_consent_at"),
   submittedAt: timestamp("submitted_at").defaultNow(),
   reviewedAt: timestamp("reviewed_at"),

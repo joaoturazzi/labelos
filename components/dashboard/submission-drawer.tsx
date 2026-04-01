@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { X, ExternalLink } from "lucide-react";
 import { AudioPlayer } from "./audio-player";
+import { useGlobalPlayer } from "./global-player";
+import { PipelineTracker } from "./pipeline-tracker";
 
 interface Submission {
   id: string;
@@ -28,6 +30,10 @@ interface Submission {
   aiScore: number | null;
   aiSummary: string | null;
   aiCriteriaUsed: Record<string, unknown> | null;
+  pipelineStage: string | null;
+  pipelineAssignee: string | null;
+  pipelineDeadline: string | null;
+  pipelineHistory: unknown[] | null;
   submittedAt: string | null;
   reviewedAt: string | null;
 }
@@ -88,6 +94,26 @@ function ScoreBadge({ score }: { score: number | null }) {
     >
       {score}
     </div>
+  );
+}
+
+function GlobalPlayButton({ url, title, artist }: { url: string; title: string; artist: string }) {
+  const { play, currentTrack, isPlaying } = useGlobalPlayer();
+  const isCurrent = currentTrack?.url === url;
+
+  return (
+    <button
+      onClick={() => play({ url, title, artist })}
+      className="mt-1.5 w-full text-[11px] font-semibold py-1.5 rounded-[6px] cursor-pointer transition-colors border"
+      style={{
+        background: isCurrent && isPlaying ? "var(--color-text)" : "transparent",
+        color: isCurrent && isPlaying ? "#fff" : "var(--color-text3)",
+        borderColor: isCurrent && isPlaying ? "var(--color-text)" : "var(--color-border)",
+        fontFamily: "inherit",
+      }}
+    >
+      {isCurrent && isPlaying ? "\u23F8 Tocando no player global" : "\u25B6 Tocar no player global"}
+    </button>
   );
 }
 
@@ -213,6 +239,7 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
               trackTitle={sub.trackTitle}
               artistName={sub.artistName}
             />
+            <GlobalPlayButton url={sub.audioFileUrl} title={sub.trackTitle} artist={sub.artistName} />
           </div>
 
           {/* Track data */}
@@ -374,10 +401,24 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
             )}
           </div>
 
-          {/* Actions */}
+          {/* Pipeline */}
+          <PipelineTracker
+            submissionId={sub.id}
+            currentStage={sub.pipelineStage || "triage"}
+            assignee={sub.pipelineAssignee || null}
+            deadline={sub.pipelineDeadline || null}
+            history={(sub.pipelineHistory as { from: string; to: string; at: string; by?: string; note?: string }[]) || null}
+            aiScore={sub.aiScore}
+            onStageChange={(stage) => {
+              const statusMap: Record<string, string> = { triage: "pending", review: "reviewing", committee: "reviewing", contract: "reviewing", approved: "approved", rejected: "rejected" };
+              onStatusChange(sub.id, statusMap[stage] || "reviewing");
+            }}
+          />
+
+          {/* Actions (legacy) */}
           <div>
             <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-2">
-              Ações
+              Ações rápidas
             </p>
             <div className="flex gap-2">
               <button
