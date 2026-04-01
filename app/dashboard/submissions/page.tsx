@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useState, useEffect } from "react";
 import { SubmissionDrawer } from "@/components/dashboard/submission-drawer";
 import { Search } from "lucide-react";
 
@@ -52,33 +51,19 @@ function getScoreColor(score: number | null) {
 }
 
 export default function SubmissionsPage() {
-  const { orgId } = useAuth();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [labelId, setLabelId] = useState<string | null>(null);
 
-  // Fetch label, then submissions
+  // Fetch submissions (auth + tenant scoping handled by API)
   useEffect(() => {
     async function load() {
       try {
-        const labelRes = await fetch("/api/label");
-        if (!labelRes.ok) {
-          setLoading(false);
-          return;
-        }
-        const label = await labelRes.json();
-        if (!label?.id) {
-          setLoading(false);
-          return;
-        }
-        setLabelId(label.id);
-
-        const subRes = await fetch(`/api/submissions?labelId=${label.id}`);
-        if (subRes.ok) {
-          setSubmissions(await subRes.json());
+        const res = await fetch("/api/submissions");
+        if (res.ok) {
+          setSubmissions(await res.json());
         }
       } catch (err) {
         console.error("Failed to load:", err);
@@ -87,7 +72,7 @@ export default function SubmissionsPage() {
       }
     }
     load();
-  }, [orgId]);
+  }, []);
 
   const handleStatusChange = async (id: string, status: string) => {
     try {

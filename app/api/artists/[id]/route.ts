@@ -1,48 +1,62 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
-import { artists, artistSocials, submissions } from "@/db/schema";
-import { eq, desc, and, like } from "drizzle-orm";
+import { artists, artistSocials, submissions, labels } from "@/db/schema";
+import { eq, desc, and } from "drizzle-orm";
 
-// GET — full artist profile with socials + submissions
+async function getLabelId(): Promise<string | null> {
+  const { orgId } = await auth();
+  if (!orgId) return null;
+  const [label] = await db
+    .select()
+    .from(labels)
+    .where(eq(labels.clerkOrgId, orgId))
+    .limit(1);
+  return label?.id ?? null;
+}
+
+// GET — full artist profile (tenant-isolated)
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const labelId = await getLabelId();
+    if (!labelId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = params;
 
+    // Verify artist belongs to this label
     const [artist] = await db
       .select()
       .from(artists)
-      .where(eq(artists.id, id))
+      .where(and(eq(artists.id, id), eq(artists.labelId, labelId)))
       .limit(1);
 
     if (!artist) {
       return NextResponse.json({ error: "Artista não encontrado" }, { status: 404 });
     }
 
-    // All social snapshots ordered by date
     const socials = await db
       .select()
       .from(artistSocials)
       .where(eq(artistSocials.artistId, id))
       .orderBy(desc(artistSocials.collectedAt));
 
-    // Submissions matching artist name/email
     const artistSubmissions = await db
       .select()
       .from(submissions)
       .where(
-        artist.labelId
-          ? and(
-              eq(submissions.labelId, artist.labelId),
-              eq(submissions.artistName, artist.name)
-            )
-          : eq(submissions.artistName, artist.name)
+        and(
+          eq(submissions.labelId, labelId),
+          eq(submissions.artistName, artist.name)
+        )
       )
       .orderBy(desc(submissions.submittedAt));
 
-    // Group socials by platform — latest per platform
+    // Latest per platform
     const latestByPlatform: Record<string, (typeof socials)[number]> = {};
     for (const s of socials) {
       if (s.platform && !latestByPlatform[s.platform]) {
@@ -50,30 +64,28 @@ export async function GET(
       }
     }
 
-    // Build growth history — aggregate by collected_at date
-    const growthHistory = socials.reduce<
-      { date: string; followers: number }[]
-    >((acc, s) => {
-      if (!s.collectedAt || !s.followers) return acc;
-      const date = new Date(s.collectedAt).toISOString().split("T")[0];
-      const existing = acc.find((a) => a.date === date);
-      if (existing) {
-        existing.followers += s.followers;
-      } else {
-        acc.push({ date, followers: s.followers });
-      }
-      return acc;
-    }, []);
+    // Growth history — aggregate total followers per date
+    const growthHistory = socials.reduce<{ date: string; followers: number }[]>(
+      (acc, s) => {
+        if (!s.collectedAt || !s.followers) return acc;
+        const date = new Date(s.collectedAt).toISOString().split("T")[0];
+        const existing = acc.find((a) => a.date === date);
+        if (existing) {
+          existing.followers += s.followers;
+        } else {
+          acc.push({ date, followers: s.followers });
+        }
+        return acc;
+      },
+      []
+    );
     growthHistory.sort((a, b) => a.date.localeCompare(b.date));
 
-    // Detect alerts
+    // Alerts
     const alerts: { type: "success" | "danger"; message: string }[] = [];
     for (const [platform, latest] of Object.entries(latestByPlatform)) {
       const previous = socials.find(
-        (s) =>
-          s.platform === platform &&
-          s.id !== latest.id &&
-          s.collectedAt
+        (s) => s.platform === platform && s.id !== latest.id && s.collectedAt
       );
       if (previous && latest.followers && previous.followers && previous.followers > 0) {
         const delta = (latest.followers - previous.followers) / previous.followers;
@@ -97,7 +109,6 @@ export async function GET(
       growthHistory,
       alerts,
       submissions: artistSubmissions,
-      allSocials: socials,
     });
   } catch (err) {
     console.error("GET /api/artists/[id] error:", err);
@@ -105,12 +116,17 @@ export async function GET(
   }
 }
 
-// PATCH — edit artist
+// PATCH — edit artist (tenant-isolated)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const labelId = await getLabelId();
+    if (!labelId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = params;
     const body = await req.json();
     const { name, email, instagramHandle, tiktokHandle, spotifyId, youtubeChannel } = body;
@@ -130,7 +146,7 @@ export async function PATCH(
     const [updated] = await db
       .update(artists)
       .set(updates)
-      .where(eq(artists.id, id))
+      .where(and(eq(artists.id, id), eq(artists.labelId, labelId)))
       .returning();
 
     if (!updated) {
@@ -144,25 +160,32 @@ export async function PATCH(
   }
 }
 
-// DELETE — remove artist
+// DELETE — remove artist (tenant-isolated)
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const labelId = await getLabelId();
+    if (!labelId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = params;
 
-    // Delete social snapshots first
-    await db.delete(artistSocials).where(eq(artistSocials.artistId, id));
+    // Verify ownership before delete
+    const [artist] = await db
+      .select()
+      .from(artists)
+      .where(and(eq(artists.id, id), eq(artists.labelId, labelId)))
+      .limit(1);
 
-    const [deleted] = await db
-      .delete(artists)
-      .where(eq(artists.id, id))
-      .returning();
-
-    if (!deleted) {
+    if (!artist) {
       return NextResponse.json({ error: "Artista não encontrado" }, { status: 404 });
     }
+
+    await db.delete(artistSocials).where(eq(artistSocials.artistId, id));
+    await db.delete(artists).where(eq(artists.id, id));
 
     return NextResponse.json({ success: true });
   } catch (err) {

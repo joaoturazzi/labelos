@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { submissions } from "@/db/schema";
+import { submissions, labels } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { auth } from "@clerk/nextjs/server";
 
-// POST — create a new submission (called from public portal)
+// POST — create a new submission (called from public portal — no auth)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -25,28 +26,39 @@ export async function POST(req: NextRequest) {
       audioFileKey,
     } = body;
 
-    if (!labelId || !artistName || !artistEmail || !trackTitle || !audioFileUrl || !audioFileKey) {
+    if (!labelId || !artistName?.trim() || !artistEmail?.trim() || !trackTitle?.trim() || !audioFileUrl || !audioFileKey) {
       return NextResponse.json(
         { error: "Campos obrigatórios faltando" },
         { status: 400 }
       );
     }
 
+    // Verify label exists
+    const [label] = await db
+      .select()
+      .from(labels)
+      .where(eq(labels.id, labelId))
+      .limit(1);
+
+    if (!label) {
+      return NextResponse.json({ error: "Label não encontrada" }, { status: 404 });
+    }
+
     const [submission] = await db
       .insert(submissions)
       .values({
         labelId,
-        artistName,
-        artistEmail,
-        trackTitle,
+        artistName: artistName.trim(),
+        artistEmail: artistEmail.trim(),
+        trackTitle: trackTitle.trim(),
         genre: genre || null,
         bpm: bpm ? parseInt(bpm, 10) : null,
-        mixador: mixador || null,
-        distributor: distributor || null,
-        instagramUrl: instagramUrl || null,
-        tiktokUrl: tiktokUrl || null,
-        spotifyUrl: spotifyUrl || null,
-        youtubeUrl: youtubeUrl || null,
+        mixador: mixador?.trim() || null,
+        distributor: distributor?.trim() || null,
+        instagramUrl: instagramUrl?.trim() || null,
+        tiktokUrl: tiktokUrl?.trim() || null,
+        spotifyUrl: spotifyUrl?.trim() || null,
+        youtubeUrl: youtubeUrl?.trim() || null,
         audioFileUrl,
         audioFileKey,
         status: "pending",
@@ -71,27 +83,29 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET — list submissions for a label
-export async function GET(req: NextRequest) {
+// GET — list submissions (requires auth, scoped to user's label)
+export async function GET() {
   try {
-    const { searchParams } = new URL(req.url);
-    const labelId = searchParams.get("labelId");
+    const { orgId } = await auth();
+    if (!orgId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!labelId) {
-      return NextResponse.json(
-        { error: "labelId is required" },
-        { status: 400 }
-      );
+    const [label] = await db
+      .select()
+      .from(labels)
+      .where(eq(labels.clerkOrgId, orgId))
+      .limit(1);
+
+    if (!label) {
+      return NextResponse.json({ error: "Label not found" }, { status: 404 });
     }
 
     const results = await db
       .select()
       .from(submissions)
-      .where(eq(submissions.labelId, labelId))
-      .orderBy(
-        desc(submissions.aiScore),
-        desc(submissions.submittedAt)
-      );
+      .where(eq(submissions.labelId, label.id))
+      .orderBy(desc(submissions.aiScore), desc(submissions.submittedAt));
 
     return NextResponse.json(results);
   } catch (err) {
