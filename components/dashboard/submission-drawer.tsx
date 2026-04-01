@@ -1,0 +1,380 @@
+"use client";
+
+import { useEffect, useCallback } from "react";
+import { X, ExternalLink } from "lucide-react";
+
+interface Submission {
+  id: string;
+  artistName: string;
+  artistEmail: string;
+  trackTitle: string;
+  genre: string | null;
+  bpm: number | null;
+  mixador: string | null;
+  distributor: string | null;
+  instagramUrl: string | null;
+  tiktokUrl: string | null;
+  spotifyUrl: string | null;
+  youtubeUrl: string | null;
+  audioFileUrl: string;
+  status: string | null;
+  aiScore: number | null;
+  aiSummary: string | null;
+  aiCriteriaUsed: Record<string, unknown> | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+}
+
+interface Props {
+  submission: Submission | null;
+  onClose: () => void;
+  onStatusChange: (id: string, status: string) => void;
+}
+
+function StatusBadge({ status }: { status: string | null }) {
+  const config: Record<string, { label: string; bg: string; color: string }> = {
+    pending: { label: "Pendente", bg: "var(--color-warning-bg)", color: "var(--color-warning)" },
+    reviewing: { label: "Em analise", bg: "var(--color-neutral-bg)", color: "var(--color-neutral)" },
+    approved: { label: "Aprovado", bg: "var(--color-success-bg)", color: "var(--color-success)" },
+    rejected: { label: "Rejeitado", bg: "var(--color-danger-bg)", color: "var(--color-danger)" },
+  };
+  const c = config[status || "pending"] || config.pending;
+  return (
+    <span
+      className="text-[10px] font-bold tracking-[0.05em] px-[6px] py-[2px] rounded-[4px] uppercase"
+      style={{ background: c.bg, color: c.color }}
+    >
+      {c.label}
+    </span>
+  );
+}
+
+function ScoreBadge({ score }: { score: number | null }) {
+  if (score === null || score === undefined) {
+    return (
+      <span className="text-[11px] text-text4">Analisando...</span>
+    );
+  }
+  const color =
+    score >= 70
+      ? "var(--color-success)"
+      : score >= 40
+      ? "var(--color-warning)"
+      : "var(--color-danger)";
+  const bg =
+    score >= 70
+      ? "var(--color-success-bg)"
+      : score >= 40
+      ? "var(--color-warning-bg)"
+      : "var(--color-danger-bg)";
+
+  return (
+    <div
+      className="flex items-center justify-center rounded-full font-bold text-[15px]"
+      style={{
+        width: 48,
+        height: 48,
+        background: bg,
+        color: color,
+        border: `1.5px solid ${color}`,
+      }}
+    >
+      {score}
+    </div>
+  );
+}
+
+function SocialLink({ url, label }: { url: string | null; label: string }) {
+  if (!url) return null;
+  const href = url.startsWith("http") ? url : `https://${url}`;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-1.5 text-[13px] text-text2 hover:text-text transition-colors no-underline"
+    >
+      <ExternalLink size={12} />
+      {label}
+    </a>
+  );
+}
+
+export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props) {
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    },
+    [onClose]
+  );
+
+  useEffect(() => {
+    if (submission) {
+      document.addEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [submission, handleKeyDown]);
+
+  if (!submission) return null;
+
+  const criteria = submission.aiCriteriaUsed as Record<string, unknown> | null;
+  const pontosFortes = (criteria?.pontos_fortes as string[]) || [];
+  const pontosFracos = (criteria?.pontos_fracos as string[]) || [];
+  const fitCriterios = criteria?.fit_criterios as string | undefined;
+  const recomendacao = criteria?.recomendacao as string | undefined;
+
+  return (
+    <>
+      {/* Overlay */}
+      <div
+        className="fixed inset-0 z-[800]"
+        style={{ background: "rgba(0,0,0,0.22)" }}
+        onClick={onClose}
+      />
+
+      {/* Drawer */}
+      <div
+        className="fixed top-0 right-0 bottom-0 z-[801] bg-bg border-l border-border overflow-y-auto"
+        style={{ width: 480 }}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between p-6 border-b border-border">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h2 className="text-[15px] font-bold text-text truncate">
+                {submission.artistName}
+              </h2>
+              <StatusBadge status={submission.status} />
+            </div>
+            <p className="text-[13px] text-text2 truncate">
+              {submission.trackTitle}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex items-center justify-center w-7 h-7 rounded-[6px] border-none bg-transparent text-text3 hover:bg-bg3 hover:text-text cursor-pointer transition-colors ml-3 flex-shrink-0"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-6 flex flex-col gap-6">
+          {/* Audio player */}
+          <div>
+            <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-2">
+              Player
+            </p>
+            <div className="bg-bg2 border border-border rounded-[8px] p-3">
+              <audio
+                controls
+                src={submission.audioFileUrl}
+                className="w-full"
+                style={{ height: 36 }}
+              />
+            </div>
+          </div>
+
+          {/* Track data */}
+          <div>
+            <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-2">
+              Dados da track
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-bg2 border border-border rounded-[8px] p-3">
+                <p className="text-[11px] text-text4 mb-0.5">Genero</p>
+                <p className="text-[13px] text-text">{submission.genre || "—"}</p>
+              </div>
+              <div className="bg-bg2 border border-border rounded-[8px] p-3">
+                <p className="text-[11px] text-text4 mb-0.5">BPM</p>
+                <p className="text-[13px] text-text">{submission.bpm || "—"}</p>
+              </div>
+              <div className="bg-bg2 border border-border rounded-[8px] p-3">
+                <p className="text-[11px] text-text4 mb-0.5">Mixador</p>
+                <p className="text-[13px] text-text">{submission.mixador || "—"}</p>
+              </div>
+              <div className="bg-bg2 border border-border rounded-[8px] p-3">
+                <p className="text-[11px] text-text4 mb-0.5">Distribuidora</p>
+                <p className="text-[13px] text-text">{submission.distributor || "—"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Social links */}
+          {(submission.instagramUrl || submission.tiktokUrl || submission.spotifyUrl || submission.youtubeUrl) && (
+            <div>
+              <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-2">
+                Redes sociais
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <SocialLink url={submission.instagramUrl} label="Instagram" />
+                <SocialLink url={submission.tiktokUrl} label="TikTok" />
+                <SocialLink url={submission.spotifyUrl} label="Spotify" />
+                <SocialLink url={submission.youtubeUrl} label="YouTube" />
+              </div>
+            </div>
+          )}
+
+          {/* AI Result */}
+          <div>
+            <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-2">
+              Resultado da IA
+            </p>
+
+            {submission.aiScore === null && !submission.aiSummary ? (
+              <div className="bg-bg2 border border-border rounded-[8px] p-4 text-center">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <div
+                    className="w-3 h-3 rounded-full bg-text4 animate-pulse"
+                  />
+                  <p className="text-[13px] text-text4">Analise em andamento...</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {/* Score card */}
+                <div className="bg-bg border border-border rounded-[8px] p-4 flex items-center gap-4">
+                  <ScoreBadge score={submission.aiScore} />
+                  <div className="flex-1">
+                    {recomendacao && (
+                      <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.05em] mb-0.5">
+                        Recomendacao: {recomendacao}
+                      </p>
+                    )}
+                    <p className="text-[13px] text-text2 leading-relaxed">
+                      {submission.aiSummary}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Pontos fortes */}
+                {pontosFortes.length > 0 && (
+                  <div>
+                    <p className="text-[11px] text-success font-semibold mb-1">
+                      Pontos fortes
+                    </p>
+                    <ul className="flex flex-col gap-1">
+                      {pontosFortes.map((p, i) => (
+                        <li
+                          key={i}
+                          className="text-[13px] text-text2 pl-3 relative before:content-[''] before:absolute before:left-0 before:top-[7px] before:w-1.5 before:h-1.5 before:rounded-full before:bg-success"
+                        >
+                          {p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Pontos fracos */}
+                {pontosFracos.length > 0 && (
+                  <div>
+                    <p className="text-[11px] text-danger font-semibold mb-1">
+                      Pontos fracos
+                    </p>
+                    <ul className="flex flex-col gap-1">
+                      {pontosFracos.map((p, i) => (
+                        <li
+                          key={i}
+                          className="text-[13px] text-text2 pl-3 relative before:content-[''] before:absolute before:left-0 before:top-[7px] before:w-1.5 before:h-1.5 before:rounded-full before:bg-danger"
+                        >
+                          {p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Fit com critérios */}
+                {fitCriterios && (
+                  <div className="bg-bg2 border border-border rounded-[8px] p-3">
+                    <p className="text-[11px] text-text3 font-semibold mb-1">
+                      Fit com criterios
+                    </p>
+                    <p className="text-[13px] text-text2">{fitCriterios}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div>
+            <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-2">
+              Acoes
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => onStatusChange(submission.id, "approved")}
+                disabled={submission.status === "approved"}
+                className={`
+                  flex-1 rounded-[6px] text-[13px] font-semibold px-[14px] py-[6px] cursor-pointer border-none
+                  transition-opacity
+                  ${
+                    submission.status === "approved"
+                      ? "opacity-50 cursor-not-allowed bg-text text-white"
+                      : "bg-text text-white hover:opacity-90"
+                  }
+                `}
+              >
+                Aprovar
+              </button>
+              <button
+                onClick={() => onStatusChange(submission.id, "reviewing")}
+                disabled={submission.status === "reviewing"}
+                className={`
+                  flex-1 rounded-[6px] text-[13px] font-semibold px-[14px] py-[6px] cursor-pointer
+                  transition-opacity border
+                  ${
+                    submission.status === "reviewing"
+                      ? "opacity-50 cursor-not-allowed bg-transparent text-neutral border-[#e0e0de]"
+                      : "bg-transparent text-neutral border-[#e0e0de] hover:border-text3"
+                  }
+                `}
+              >
+                Em analise
+              </button>
+              <button
+                onClick={() => onStatusChange(submission.id, "rejected")}
+                disabled={submission.status === "rejected"}
+                className={`
+                  flex-1 rounded-[6px] text-[13px] font-semibold px-[14px] py-[6px] cursor-pointer
+                  transition-opacity border
+                  ${
+                    submission.status === "rejected"
+                      ? "opacity-50 cursor-not-allowed bg-danger-bg text-danger border-[#f5c6c6]"
+                      : "bg-danger-bg text-danger border-[#f5c6c6] hover:opacity-80"
+                  }
+                `}
+              >
+                Rejeitar
+              </button>
+            </div>
+          </div>
+
+          {/* Meta */}
+          <div className="border-t border-border pt-3">
+            <p className="text-[11px] text-text4">
+              Enviado em{" "}
+              {submission.submittedAt
+                ? new Date(submission.submittedAt).toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "—"}
+            </p>
+            <p className="text-[11px] text-text4">
+              E-mail: {submission.artistEmail}
+            </p>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

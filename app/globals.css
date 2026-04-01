@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+
+  /* Base palette */
+  --color-text: #1a1a1a;
+  --color-text2: #4a4a4a;
+  --color-text3: #888888;
+  --color-text4: #bbbbbb;
+  --color-bg: #ffffff;
+  --color-bg2: #f7f6f3;
+  --color-bg3: #f0efec;
+  --color-border: #eceae5;
+  --color-border2: #dddbd5;
+  --color-active-bg: #ebe9e4;
+
+  /* Semantic */
+  --color-success: #1e8449;
+  --color-success-bg: #eafaf1;
+  --color-warning: #d68910;
+  --color-warning-bg: #fef9e7;
+  --color-danger: #c0392b;
+  --color-danger-bg: #fdf2f2;
+  --color-neutral: #555555;
+  --color-neutral-bg: #f4f4f3;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Base resets */
+body {
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+input[type="range"],
+input[type="checkbox"] {
+  accent-color: var(--color-text);
+}
