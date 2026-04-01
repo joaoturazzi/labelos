@@ -18,7 +18,7 @@ async function getLabelId(): Promise<string | null> {
 // GET — full artist profile (tenant-isolated)
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const labelId = await getLabelId();
@@ -26,7 +26,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Verify artist belongs to this label
     const [artist] = await db
@@ -119,7 +119,7 @@ export async function GET(
 // PATCH — edit artist (tenant-isolated)
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const labelId = await getLabelId();
@@ -127,7 +127,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
     const { name, email, instagramHandle, tiktokHandle, spotifyId, youtubeChannel } = body;
 
@@ -163,7 +163,7 @@ export async function PATCH(
 // DELETE — remove artist (tenant-isolated)
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const labelId = await getLabelId();
@@ -171,7 +171,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Verify ownership before delete
     const [artist] = await db

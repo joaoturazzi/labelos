@@ -3,9 +3,9 @@ import { scrapeArtist } from "@/lib/scraping";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { artistId: string } }
+  { params }: { params: Promise<{ artistId: string }> }
 ) {
-  const { artistId } = params;
+  const { artistId } = await params;
 
   // Fire-and-forget
   scrapeArtist(artistId).catch((err) =>

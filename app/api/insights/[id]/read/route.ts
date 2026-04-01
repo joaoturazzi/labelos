@@ -6,7 +6,7 @@ import { eq, and } from "drizzle-orm";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { orgId } = await auth();
@@ -24,12 +24,14 @@ export async function PATCH(
       return NextResponse.json({ error: "Label not found" }, { status: 404 });
     }
 
+    const { id } = await params;
+
     const [updated] = await db
       .update(artistInsights)
       .set({ isRead: true })
       .where(
         and(
-          eq(artistInsights.id, params.id),
+          eq(artistInsights.id, id),
           eq(artistInsights.labelId, label.id)
         )
       )

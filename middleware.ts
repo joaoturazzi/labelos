@@ -4,6 +4,7 @@ const isPublicRoute = createRouteMatcher([
   "/submit(.*)",
   "/api/webhooks(.*)",
   "/api/uploadthing(.*)",
+  "/privacidade(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
 ]);
@@ -15,13 +16,10 @@ const isPublicPostRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  // Fully public routes
   if (isPublicRoute(req)) return;
 
-  // POST to /api/submissions and /api/ai/analyze are public (portal + fire-and-forget)
   if (req.method === "POST" && isPublicPostRoute(req)) return;
 
-  // Everything else requires auth
   await auth.protect();
 });
 

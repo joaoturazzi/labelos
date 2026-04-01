@@ -7,12 +7,13 @@ import type { Metadata } from "next";
 export async function generateMetadata({
   params,
 }: {
-  params: { orgSlug: string };
+  params: Promise<{ orgSlug: string }>;
 }): Promise<Metadata> {
+  const { orgSlug } = await params;
   const [label] = await db
     .select()
     .from(labels)
-    .where(eq(labels.slug, params.orgSlug))
+    .where(eq(labels.slug, orgSlug))
     .limit(1);
 
   return {
@@ -25,9 +26,9 @@ export async function generateMetadata({
 export default async function SubmitPage({
   params,
 }: {
-  params: { orgSlug: string };
+  params: Promise<{ orgSlug: string }>;
 }) {
-  const { orgSlug } = params;
+  const { orgSlug } = await params;
 
   const [label] = await db
     .select()

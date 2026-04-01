@@ -20,7 +20,7 @@ async function getLabel() {
 // PATCH — update submission status (tenant-isolated + email)
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const label = await getLabel();
@@ -28,7 +28,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
     const parsed = submissionStatusSchema.safeParse(body);
 
@@ -84,7 +84,7 @@ export async function PATCH(
 // GET — get single submission (tenant-isolated)
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const label = await getLabel();
@@ -92,7 +92,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const [submission] = await db
       .select()
       .from(submissions)
