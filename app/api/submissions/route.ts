@@ -151,7 +151,7 @@ export async function GET() {
       .limit(1);
 
     if (!label) {
-      return NextResponse.json({ error: "Label not found" }, { status: 404 });
+      return NextResponse.json([]);
     }
 
     const results = await db

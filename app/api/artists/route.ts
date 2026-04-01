@@ -20,7 +20,7 @@ export async function GET() {
   try {
     const labelId = await getLabelId();
     if (!labelId) {
-      return NextResponse.json({ error: "Label not found" }, { status: 404 });
+      return NextResponse.json([]);
     }
 
     const result = await db
