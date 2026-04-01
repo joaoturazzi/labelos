@@ -14,8 +14,14 @@ interface Submission {
   bpm: number | null;
   mixador: string | null;
   distributor: string | null;
+  compositores: string | null;
+  produtor: string | null;
+  engenheiroMix: string | null;
+  coverUrl: string | null;
   instagramUrl: string | null;
   tiktokUrl: string | null;
+  twitterUrl: string | null;
+  facebookUrl: string | null;
   spotifyUrl: string | null;
   youtubeUrl: string | null;
   audioFileUrl: string;

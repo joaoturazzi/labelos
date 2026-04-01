@@ -13,8 +13,14 @@ interface Submission {
   bpm: number | null;
   mixador: string | null;
   distributor: string | null;
+  compositores: string | null;
+  produtor: string | null;
+  engenheiroMix: string | null;
+  coverUrl: string | null;
   instagramUrl: string | null;
   tiktokUrl: string | null;
+  twitterUrl: string | null;
+  facebookUrl: string | null;
   spotifyUrl: string | null;
   youtubeUrl: string | null;
   audioFileUrl: string;
@@ -215,27 +221,30 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
               Dados da track
             </p>
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-bg2 border border-border rounded-[8px] p-3">
-                <p className="text-[11px] text-text4 mb-0.5">Gênero</p>
-                <p className="text-[13px] text-text">{sub.genre || "—"}</p>
-              </div>
-              <div className="bg-bg2 border border-border rounded-[8px] p-3">
-                <p className="text-[11px] text-text4 mb-0.5">BPM</p>
-                <p className="text-[13px] text-text">{sub.bpm || "—"}</p>
-              </div>
-              <div className="bg-bg2 border border-border rounded-[8px] p-3">
-                <p className="text-[11px] text-text4 mb-0.5">Mixador</p>
-                <p className="text-[13px] text-text">{sub.mixador || "—"}</p>
-              </div>
-              <div className="bg-bg2 border border-border rounded-[8px] p-3">
-                <p className="text-[11px] text-text4 mb-0.5">Distribuidora</p>
-                <p className="text-[13px] text-text">{sub.distributor || "—"}</p>
-              </div>
+              {[
+                { label: "Gênero", value: sub.genre },
+                { label: "BPM", value: sub.bpm },
+                { label: "Produtor", value: sub.produtor },
+                { label: "Mix/Master", value: sub.engenheiroMix },
+                { label: "Compositores", value: sub.compositores },
+                { label: "Mixador", value: sub.mixador },
+                { label: "Distribuidora", value: sub.distributor },
+              ]
+                .filter((item) => item.value)
+                .map((item) => (
+                  <div key={item.label} className="bg-bg2 border border-border rounded-[8px] p-3">
+                    <p className="text-[11px] text-text4 mb-0.5">{item.label}</p>
+                    <p className="text-[13px] text-text">{item.value}</p>
+                  </div>
+                ))}
+              {![sub.genre, sub.bpm, sub.produtor, sub.engenheiroMix, sub.compositores, sub.mixador, sub.distributor].some(Boolean) && (
+                <p className="text-[13px] text-text4 col-span-2">Nenhum dado informado.</p>
+              )}
             </div>
           </div>
 
           {/* Social links */}
-          {(sub.instagramUrl || sub.tiktokUrl || sub.spotifyUrl || sub.youtubeUrl) && (
+          {(sub.instagramUrl || sub.tiktokUrl || sub.twitterUrl || sub.facebookUrl || sub.spotifyUrl || sub.youtubeUrl) && (
             <div>
               <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-2">
                 Redes sociais
@@ -243,6 +252,8 @@ export function SubmissionDrawer({ submission, onClose, onStatusChange }: Props)
               <div className="flex flex-wrap gap-3">
                 <SocialLink url={sub.instagramUrl} label="Instagram" />
                 <SocialLink url={sub.tiktokUrl} label="TikTok" />
+                <SocialLink url={sub.twitterUrl} label="X / Twitter" />
+                <SocialLink url={sub.facebookUrl} label="Facebook" />
                 <SocialLink url={sub.spotifyUrl} label="Spotify" />
                 <SocialLink url={sub.youtubeUrl} label="YouTube" />
               </div>
