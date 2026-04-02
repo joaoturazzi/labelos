@@ -159,6 +159,15 @@ export function SubmissionForm({ labelId, labelName, accentColor = "#1a1a1a" }: 
   // Pre-analysis
   const handlePreAnalyze = useCallback(async () => {
     if (!audioFile) return;
+
+    // Blob URLs can't be accessed by the server
+    if (audioFile.url.startsWith("blob:")) {
+      setPreAnalysisError(
+        "O upload do audio nao foi concluido corretamente. Tente remover e enviar o arquivo novamente"
+      );
+      return;
+    }
+
     setPreAnalyzing(true);
     setPreAnalysisError("");
     setPreAnalysisResult(null);
