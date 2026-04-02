@@ -67,7 +67,7 @@ export default function OnboardingPage() {
   };
 
   const handleCopy = async () => {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || window.location.origin;
+    const baseUrl = window.location.origin;
     const url = `${baseUrl}/submit/${labelSlug}`;
     await navigator.clipboard.writeText(url);
     setCopied(true);

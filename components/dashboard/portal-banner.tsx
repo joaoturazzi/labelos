@@ -17,9 +17,7 @@ export function PortalBanner() {
       .then((data) => {
         const slug = data?.slug;
         if (slug) {
-          const base = (
-            process.env.NEXT_PUBLIC_APP_URL || window.location.origin
-          ).replace(/\/$/, "");
+          const base = window.location.origin.replace(/\/$/, "");
           setPortalUrl(`${base}/submit/${slug}`);
         } else {
           setError(true);
