@@ -99,8 +99,12 @@ export default function PortalSettingsPage() {
     setSaving(false);
   };
 
+  const getBaseUrl = () =>
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+    (typeof window !== "undefined" ? window.location.origin : "");
+
   const handleCopyLink = () => {
-    const url = `${window.location.origin}/submit/${labelSlug}`;
+    const url = `${getBaseUrl()}/submit/${labelSlug}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -114,7 +118,7 @@ export default function PortalSettingsPage() {
     );
   }
 
-  const portalUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/submit/${labelSlug}`;
+  const portalUrl = `${getBaseUrl()}/submit/${labelSlug}`;
   const inputClass =
     "w-full text-[13px] px-[10px] py-[6px] border border-[#e5e4e0] rounded-[6px] bg-bg text-text outline-none";
   const displayColor = isValidHex(hexInput) ? hexInput : "#1a1a1a";
