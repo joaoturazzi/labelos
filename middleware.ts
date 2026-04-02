@@ -15,6 +15,10 @@ const isPublicPostRoute = createRouteMatcher([
   "/api/submissions",
   "/api/ai/analyze",
   "/api/insights/generate(.*)",
+  "/api/public/(.*)",
+  "/api/radar/scan",
+  "/api/scraping/run",
+  "/api/trending/update",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

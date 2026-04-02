@@ -1,16 +1,26 @@
 import { NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import { labels } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
+function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 30);
+}
+
 // GET — get label for current org (auto-create if missing)
 export async function GET() {
   try {
-    const { orgId, orgSlug } = await auth();
+    const { orgId } = await auth();
     if (!orgId) {
       return NextResponse.json(
-        { error: "No organization" },
+        { error: "Sem organizacao ativa" },
         { status: 401 }
       );
     }
@@ -26,27 +36,48 @@ export async function GET() {
       return NextResponse.json(existing);
     }
 
-    // Auto-create label if it doesn't exist yet
-    // This handles the case where the Clerk webhook hasn't fired
-    // or the user is in local dev without webhooks
-    const user = await currentUser();
-    const orgName =
-      orgSlug || user?.firstName
-        ? `${user?.firstName || "Minha"} Gravadora`
-        : "Minha Gravadora";
-    const slug = orgSlug || orgId.replace("org_", "").slice(0, 12).toLowerCase();
+    // Auto-create label using Clerk org data
+    let orgName = "Minha Gravadora";
+    let rawSlug = orgId.replace("org_", "").slice(0, 12).toLowerCase();
+
+    try {
+      const client = await clerkClient();
+      const org = await client.organizations.getOrganization({
+        organizationId: orgId,
+      });
+      orgName = org.name || orgName;
+      rawSlug = slugify(org.slug || org.name || orgId);
+    } catch (err) {
+      console.warn("[api/label] Could not fetch Clerk org, using fallback:", err);
+    }
+
+    // Ensure slug is not empty
+    if (!rawSlug) {
+      rawSlug = orgId.replace("org_", "").slice(0, 12).toLowerCase();
+    }
+
+    // Ensure slug is unique
+    const [slugConflict] = await db
+      .select({ id: labels.id })
+      .from(labels)
+      .where(eq(labels.slug, rawSlug))
+      .limit(1);
+
+    const finalSlug = slugConflict
+      ? `${rawSlug}-${orgId.slice(-4).toLowerCase()}`
+      : rawSlug;
 
     const [newLabel] = await db
       .insert(labels)
       .values({
         clerkOrgId: orgId,
         name: orgName,
-        slug,
+        slug: finalSlug,
         plan: "free",
       })
       .returning();
 
-    console.log(`[Label] Auto-created label "${orgName}" for org ${orgId}`);
+    console.log(`[api/label] Auto-created label "${orgName}" slug="${finalSlug}" for org ${orgId}`);
 
     return NextResponse.json(newLabel);
   } catch (err) {

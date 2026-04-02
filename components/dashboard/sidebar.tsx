@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Rss, Music, Users, TrendingUp, BarChart3, Columns3, Settings, Palette, Menu, X } from "lucide-react";
+import { Rss, Music, Users, TrendingUp, BarChart3, Columns3, Settings, Palette, Menu, X, Radio } from "lucide-react";
 
 const navItems = [
   { label: "Feed", href: "/dashboard/feed", icon: Rss },
@@ -11,6 +11,7 @@ const navItems = [
   { label: "Pipeline", href: "/dashboard/pipeline", icon: Columns3 },
   { label: "Artists", href: "/dashboard/artists", icon: Users },
   { label: "Trending", href: "/dashboard/trending", icon: TrendingUp },
+  { label: "Radar", href: "/dashboard/radar", icon: Radio },
   { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
 ];
 

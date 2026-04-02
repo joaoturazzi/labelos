@@ -567,6 +567,10 @@ export default function FeedPage() {
           </button>
         </div>
 
+        {updateMsg && (
+          <p className="text-[11px] text-text3 mb-3">{updateMsg}</p>
+        )}
+
         {/* Filters */}
         <div className="flex items-center gap-2 mb-5 flex-wrap">
           {/* Artist multi-select */}

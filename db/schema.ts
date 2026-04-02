@@ -199,6 +199,30 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ── Radar Alerts (artistas em ascensao) ──────────────────────────────
+// Monitora crescimento de artistas que ja submeteram demos
+export const radarAlerts = pgTable("radar_alerts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  labelId: uuid("label_id")
+    .references(() => labels.id, { onDelete: "cascade" })
+    .notNull(),
+  submissionId: uuid("submission_id")
+    .references(() => submissions.id, { onDelete: "cascade" })
+    .notNull(),
+  artistName: text("artist_name").notNull(),
+  platform: text("platform").notNull(),
+  metric: text("metric").notNull(),
+  previousValue: integer("previous_value"),
+  currentValue: integer("current_value"),
+  growthPercent: numeric("growth_percent", { precision: 8, scale: 2 }),
+  submissionStatus: text("submission_status").notNull(),
+  submissionDate: timestamp("submission_date"),
+  trackTitle: text("track_title"),
+  alertMessage: text("alert_message").notNull(),
+  isRead: boolean("is_read").default(false).notNull(),
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+});
+
 // ── Rate Limits ──────────────────────────────────────────────────────
 export const rateLimits = pgTable("rate_limits", {
   id: uuid("id").primaryKey().defaultRandom(),

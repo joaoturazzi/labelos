@@ -18,6 +18,13 @@ export const uploadRouter = {
     .onUploadComplete(async ({ file }) => {
       return { url: file.url, key: file.key };
     }),
+
+  logoUploader: f({
+    image: { maxFileSize: "2MB", maxFileCount: 1 },
+  })
+    .onUploadComplete(async ({ file }) => {
+      return { url: file.url, key: file.key };
+    }),
 } satisfies FileRouter;
 
 export type AppFileRouter = typeof uploadRouter;

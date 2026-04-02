@@ -61,7 +61,7 @@ export const aiConfigSchema = z.object({
 });
 
 export const labelSettingsSchema = z.object({
-  logoUrl: z.string().url().optional().nullable(),
+  logoUrl: z.string().url().optional().nullable().or(z.literal("")).transform(v => v === "" ? null : v),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   portalHeadline: z.string().max(200).optional().nullable(),
   portalSubtext: z.string().max(500).optional().nullable(),

@@ -4,7 +4,7 @@ import { submissions, labels } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { submissionSchema } from "@/lib/schemas";
-import { sendSubmissionConfirmation } from "@/lib/email";
+import { sendSubmissionConfirmation, sendNewSubmissionNotification } from "@/lib/email";
 import { createNotification } from "@/lib/notifications";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -125,6 +125,17 @@ export async function POST(req: NextRequest) {
       `${data.artistName} enviou uma demo`,
       "/dashboard/submissions"
     );
+
+    // Fire-and-forget: notify label owner via email
+    if (label.contactEmail) {
+      sendNewSubmissionNotification(
+        label.contactEmail,
+        data.artistName,
+        data.trackTitle,
+        label.name,
+        `${appUrl}/dashboard/submissions`
+      );
+    }
 
     return NextResponse.json(submission, { status: 201 });
   } catch (err) {

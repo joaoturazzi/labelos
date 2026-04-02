@@ -107,6 +107,7 @@ export default function TrendingPage() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [updateMsg, setUpdateMsg] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -124,15 +125,18 @@ export default function TrendingPage() {
 
   const handleUpdate = async () => {
     setUpdating(true);
+    setUpdateMsg("");
     try {
       await fetch("/api/trending/update", { method: "POST" });
-      // Reload after a delay
+      setUpdateMsg("Coleta iniciada. Os dados aparecerao em instantes.");
       setTimeout(async () => {
         const res = await fetch("/api/trending");
         if (res.ok) setData(await res.json());
         setUpdating(false);
+        setUpdateMsg("");
       }, 5000);
     } catch {
+      setUpdateMsg("Erro ao iniciar coleta.");
       setUpdating(false);
     }
   };
@@ -179,6 +183,10 @@ export default function TrendingPage() {
           {updating ? "Atualizando..." : "Atualizar agora"}
         </button>
       </div>
+
+      {updateMsg && (
+        <p className="text-[11px] text-text3 mb-3">{updateMsg}</p>
+      )}
 
       {/* Three columns */}
       <div className="grid grid-cols-3 gap-5">

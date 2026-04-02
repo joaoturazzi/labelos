@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useUploadThing } from "@/lib/uploadthing-client";
+import { PreAnalysisResult } from "./pre-analysis-result";
 
 const GENRES = [
   "Rap", "Trap", "Funk", "Afrobeat", "EDM", "Pop", "R&B",
@@ -38,6 +39,7 @@ interface RoyaltyEntry {
 interface Props {
   labelId: string;
   labelName: string;
+  accentColor?: string;
 }
 
 const emptyArtist = (): ArtistEntry => ({
@@ -55,10 +57,11 @@ function cpfMask(v: string) {
   return v.replace(/\D/g, "").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2").slice(0, 14);
 }
 
-export function SubmissionForm({ labelId, labelName }: Props) {
+export function SubmissionForm({ labelId, labelName, accentColor = "#1a1a1a" }: Props) {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submissionId, setSubmissionId] = useState("");
   const [errors, setErrors] = useState<Record<string, boolean>>({});
 
   // Step 1 — Track data
@@ -86,6 +89,14 @@ export function SubmissionForm({ labelId, labelName }: Props) {
   // Step 3 — Royalties
   const [royaltyEntries, setRoyaltyEntries] = useState<RoyaltyEntry[]>([emptyRoyalty()]);
 
+  // Step 4 — LGPD
+  const [lgpdConsent, setLgpdConsent] = useState(false);
+
+  // Pre-analysis
+  const [preAnalyzing, setPreAnalyzing] = useState(false);
+  const [preAnalysisResult, setPreAnalysisResult] = useState<Record<string, unknown> | null>(null);
+  const [preAnalysisError, setPreAnalysisError] = useState("");
+
   const inputClass = (field?: string) =>
     `w-full text-[13px] px-[10px] py-[6px] rounded-[6px] bg-bg text-text outline-none border ${
       field && errors[field] ? "border-danger" : "border-[#e5e4e0]"
@@ -99,9 +110,9 @@ export function SubmissionForm({ labelId, labelName }: Props) {
   });
   const { startUpload: startCoverUpload } = useUploadThing("coverUploader");
 
-  // Audio upload — uses UploadThing in production, local fallback in dev
+  // Audio upload
   const handleAudioSelect = useCallback(async (file: File) => {
-    if (file.size > 100 * 1024 * 1024) { alert("Máximo 100MB."); return; }
+    if (file.size > 100 * 1024 * 1024) { alert("Maximo 100MB."); return; }
     setUploading(true); setUploadProgress(0);
     setErrors((prev) => ({ ...prev, audio: false }));
 
@@ -119,7 +130,6 @@ export function SubmissionForm({ labelId, labelName }: Props) {
       }
     } catch (err) {
       console.error("UploadThing failed, using local fallback:", err);
-      // Fallback for local dev without UploadThing keys
       const url = URL.createObjectURL(file);
       const key = `local_${Date.now()}_${file.name}`;
       setAudioFile({ url, key, name: file.name });
@@ -131,7 +141,7 @@ export function SubmissionForm({ labelId, labelName }: Props) {
 
   // Cover upload
   const handleCoverSelect = useCallback(async (file: File) => {
-    if (file.size > 5 * 1024 * 1024) { alert("Máximo 5MB."); return; }
+    if (file.size > 5 * 1024 * 1024) { alert("Maximo 5MB."); return; }
     try {
       const res = await startCoverUpload([file]);
       if (res && res[0]) {
@@ -146,12 +156,43 @@ export function SubmissionForm({ labelId, labelName }: Props) {
     }
   }, [startCoverUpload]);
 
+  // Pre-analysis
+  const handlePreAnalyze = useCallback(async () => {
+    if (!audioFile) return;
+    setPreAnalyzing(true);
+    setPreAnalysisError("");
+    setPreAnalysisResult(null);
+
+    try {
+      const res = await fetch("/api/public/pre-analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          audioUrl: audioFile.url,
+          trackTitle,
+          genre: selectedGenres.join(", "),
+          bpm: bpm || null,
+          labelId,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setPreAnalysisResult(data.result);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Erro na analise";
+      setPreAnalysisError(msg);
+    } finally {
+      setPreAnalyzing(false);
+    }
+  }, [audioFile, trackTitle, selectedGenres, bpm, labelId]);
+
   // Navigation
   const validateStep1 = () => {
     const e: Record<string, boolean> = {};
     if (!trackTitle.trim()) e.trackTitle = true;
     if (!artistNameMain.trim()) e.artistNameMain = true;
-    if (!artistEmail.trim()) e.artistEmail = true;
+    if (!artistEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(artistEmail)) e.artistEmail = true;
     if (!audioFile) e.audio = true;
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -183,6 +224,10 @@ export function SubmissionForm({ labelId, labelName }: Props) {
   };
 
   const handleSubmit = async () => {
+    if (!lgpdConsent) {
+      alert("Voce precisa concordar com o tratamento de dados para enviar.");
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/submissions", {
@@ -225,6 +270,8 @@ export function SubmissionForm({ labelId, labelName }: Props) {
         alert(data.error || "Erro ao enviar.");
         return;
       }
+      const data = await res.json();
+      setSubmissionId(data.id || "");
       setSubmitted(true);
     } catch {
       alert("Erro de conexao. Tente novamente.");
@@ -233,11 +280,64 @@ export function SubmissionForm({ labelId, labelName }: Props) {
     }
   };
 
+  // ── Success state ──
   if (submitted) {
     return (
-      <div className="text-center py-12">
-        <p className="text-[22px] font-bold text-text tracking-[-0.3px] mb-2">Demo enviada!</p>
-        <p className="text-[13px] text-text3">Em breve nossa equipe vai ouvir.</p>
+      <div className="text-center py-10">
+        <div
+          className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center"
+          style={{ background: accentColor }}
+        >
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+        <p className="text-[22px] font-bold text-text tracking-[-0.3px] mb-2">
+          Demo enviada com sucesso!
+        </p>
+        <p className="text-[13px] text-text3 mb-4">
+          A equipe da <strong>{labelName}</strong> vai ouvir e avaliar sua musica.
+          <br />
+          Voce recebera um e-mail em <strong>{artistEmail}</strong> com a confirmacao.
+        </p>
+
+        <div className="bg-bg2 border border-border rounded-[8px] p-4 text-left max-w-[360px] mx-auto mb-4">
+          <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em] mb-2">
+            Resumo do envio
+          </p>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex justify-between">
+              <span className="text-[12px] text-text3">Musica</span>
+              <span className="text-[12px] text-text font-medium">{trackTitle}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[12px] text-text3">Artista</span>
+              <span className="text-[12px] text-text font-medium">{artistNameMain}</span>
+            </div>
+            {selectedGenres.length > 0 && (
+              <div className="flex justify-between">
+                <span className="text-[12px] text-text3">Genero</span>
+                <span className="text-[12px] text-text font-medium">{selectedGenres.join(", ")}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-[12px] text-text3">Status</span>
+              <span className="text-[12px] font-medium" style={{ color: "#d4a017" }}>
+                Pendente de analise
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {submissionId && (
+          <p className="text-[10px] text-text4 mb-3" style={{ fontFamily: "monospace" }}>
+            ID: {submissionId.slice(0, 8)}
+          </p>
+        )}
+
+        <p className="text-[12px] text-text4">
+          Prazo estimado de resposta: 7 a 14 dias uteis
+        </p>
       </div>
     );
   }
@@ -245,26 +345,45 @@ export function SubmissionForm({ labelId, labelName }: Props) {
   // Step indicator
   const StepIndicator = () => (
     <div className="flex items-center gap-2 mb-6">
-      {[1, 2, 3, 4].map((s) => (
-        <div key={s} className="flex items-center gap-2">
-          <div
-            className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
-              step >= s ? "bg-text text-white" : "bg-bg3 text-text3"
-            }`}
-          >
-            {s}
+      {[
+        { n: 1, label: "Musica" },
+        { n: 2, label: "Artista" },
+        { n: 3, label: "Royalties" },
+        { n: 4, label: "Enviar" },
+      ].map((s) => (
+        <div key={s.n} className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <div
+              className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold"
+              style={{
+                background: step >= s.n ? accentColor : "var(--color-bg3)",
+                color: step >= s.n ? "#fff" : "var(--color-text3)",
+              }}
+            >
+              {step > s.n ? "\u2713" : s.n}
+            </div>
+            <span className={`text-[10px] font-medium ${step >= s.n ? "text-text" : "text-text4"}`}>
+              {s.label}
+            </span>
           </div>
-          {s < 4 && <div className={`w-8 h-0.5 ${step > s ? "bg-text" : "bg-bg3"}`} />}
+          {s.n < 4 && (
+            <div
+              className="w-6 h-0.5"
+              style={{ background: step > s.n ? accentColor : "var(--color-bg3)" }}
+            />
+          )}
         </div>
       ))}
     </div>
   );
 
+  const btnStyle = { background: accentColor, fontFamily: "inherit" as const };
+
   return (
     <div>
       <StepIndicator />
 
-      {/* ── STEP 1: Dados da música ── */}
+      {/* ── STEP 1: Dados da musica ── */}
       {step === 1 && (
         <div className="flex flex-col gap-4">
           <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em]">
@@ -289,21 +408,24 @@ export function SubmissionForm({ labelId, labelName }: Props) {
           </div>
 
           <div>
-            <label className={labelClass}>Titulo da musica</label>
+            <label className={labelClass}>Titulo da musica *</label>
             <input type="text" value={trackTitle} onChange={(e) => setTrackTitle(e.target.value)}
               className={inputClass("trackTitle")} style={{ fontFamily: "inherit" }} />
+            {errors.trackTitle && <p className="text-[11px] text-danger mt-0.5">Campo obrigatorio</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelClass}>Artista principal</label>
+              <label className={labelClass}>Artista principal *</label>
               <input type="text" value={artistNameMain} onChange={(e) => setArtistNameMain(e.target.value)}
                 className={inputClass("artistNameMain")} style={{ fontFamily: "inherit" }} />
+              {errors.artistNameMain && <p className="text-[11px] text-danger mt-0.5">Campo obrigatorio</p>}
             </div>
             <div>
-              <label className={labelClass}>E-mail</label>
+              <label className={labelClass}>E-mail *</label>
               <input type="email" value={artistEmail} onChange={(e) => setArtistEmail(e.target.value)}
                 className={inputClass("artistEmail")} style={{ fontFamily: "inherit" }} />
+              {errors.artistEmail && <p className="text-[11px] text-danger mt-0.5">E-mail invalido</p>}
             </div>
           </div>
 
@@ -328,7 +450,7 @@ export function SubmissionForm({ labelId, labelName }: Props) {
 
           {/* Genre checkboxes */}
           <div>
-            <label className={labelClass}>Gênero</label>
+            <label className={labelClass}>Genero</label>
             <div className="flex flex-wrap gap-1.5">
               {GENRES.map((g) => (
                 <button key={g} type="button"
@@ -337,9 +459,9 @@ export function SubmissionForm({ labelId, labelName }: Props) {
                   )}
                   className="text-[12px] px-3 py-1 rounded-[20px] font-medium cursor-pointer border transition-colors"
                   style={{
-                    background: selectedGenres.includes(g) ? "var(--color-text)" : "transparent",
+                    background: selectedGenres.includes(g) ? accentColor : "transparent",
                     color: selectedGenres.includes(g) ? "#fff" : "var(--color-text3)",
-                    borderColor: selectedGenres.includes(g) ? "var(--color-text)" : "#e0e0de",
+                    borderColor: selectedGenres.includes(g) ? accentColor : "#e0e0de",
                     fontFamily: "inherit",
                   }}
                 >{g}</button>
@@ -362,9 +484,9 @@ export function SubmissionForm({ labelId, labelName }: Props) {
 
           {/* Audio upload */}
           <div>
-            <label className={labelClass}>Arquivo de audio</label>
+            <label className={labelClass}>Arquivo de audio *</label>
             <div
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => !uploading && fileInputRef.current?.click()}
               className={`rounded-[8px] p-5 text-center cursor-pointer border-2 border-dashed transition-colors ${
                 errors.audio ? "border-danger bg-danger-bg" : "border-border2 bg-bg hover:border-text3"
               }`}
@@ -378,8 +500,8 @@ export function SubmissionForm({ labelId, labelName }: Props) {
                 <div>
                   <p className="text-[13px] text-text3">Enviando...</p>
                   <div className="mt-2 bg-bg3 rounded-[5px] h-[5px] overflow-hidden">
-                    <div className="h-full rounded-[5px] bg-text transition-all duration-300"
-                      style={{ width: `${uploadProgress}%` }} />
+                    <div className="h-full rounded-[5px] transition-all duration-300"
+                      style={{ width: `${uploadProgress}%`, background: accentColor }} />
                   </div>
                 </div>
               ) : (
@@ -392,13 +514,87 @@ export function SubmissionForm({ labelId, labelName }: Props) {
                 accept=".mp3,.wav,.aiff,.aif,.flac,audio/*" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleAudioSelect(f); }} />
             </div>
+            {errors.audio && <p className="text-[11px] text-danger mt-0.5">Envie o arquivo de audio</p>}
           </div>
 
-          <button type="button" onClick={nextStep}
-            className="w-full bg-text text-white border-none rounded-[6px] text-[13px] font-semibold px-[14px] py-[10px] cursor-pointer hover:opacity-90 transition-opacity"
-            style={{ fontFamily: "inherit" }}>
-            Proximo
-          </button>
+          {/* Pre-analysis section */}
+          {audioFile && !preAnalysisResult && (
+            <div>
+              <button
+                type="button"
+                onClick={handlePreAnalyze}
+                disabled={preAnalyzing}
+                className="w-full py-2.5 rounded-[8px] text-[13px] font-semibold cursor-pointer border transition-all flex items-center justify-center gap-2"
+                style={{
+                  background: preAnalyzing ? "#f0efec" : "#f7f6f3",
+                  color: preAnalyzing ? "#888" : "#1a1a1a",
+                  borderColor: "#eceae5",
+                  fontFamily: "inherit",
+                  cursor: preAnalyzing ? "not-allowed" : "pointer",
+                }}
+              >
+                {preAnalyzing ? (
+                  <>
+                    <span className="inline-block animate-spin">&#8635;</span>
+                    Analisando sua faixa... (pode levar ate 30s)
+                  </>
+                ) : (
+                  "Analisar minha faixa antes de enviar"
+                )}
+              </button>
+              <p className="text-[11px] text-text4 text-center mt-1.5">
+                Opcional — receba um feedback da IA antes de submeter
+              </p>
+            </div>
+          )}
+
+          {preAnalyzing && !preAnalysisResult && (
+            <div className="bg-bg2 border border-border rounded-[8px] p-5 text-center">
+              <p className="text-[13px] text-text3 mb-1">
+                Nossa IA esta ouvindo sua faixa...
+              </p>
+              <p className="text-[11px] text-text4">
+                Analisando qualidade, producao e potencial comercial
+              </p>
+            </div>
+          )}
+
+          {preAnalysisError && (
+            <div
+              className="rounded-[8px] p-3 text-[13px]"
+              style={{
+                background: "#fef9e7",
+                border: "1px solid #f9ca56",
+                color: "#d68910",
+              }}
+            >
+              {preAnalysisError}. Voce ainda pode enviar sua demo normalmente.
+            </div>
+          )}
+
+          {preAnalysisResult && (
+            <PreAnalysisResult
+              result={preAnalysisResult as unknown as Parameters<typeof PreAnalysisResult>[0]["result"]}
+              accentColor={accentColor}
+              onContinue={() => {
+                setPreAnalysisResult(null);
+                nextStep();
+              }}
+              onReupload={() => {
+                setPreAnalysisResult(null);
+                setAudioFile(null);
+                setUploadProgress(0);
+              }}
+            />
+          )}
+
+          {!preAnalysisResult && (
+            <button type="button" onClick={nextStep}
+              className="w-full text-white border-none rounded-[6px] text-[13px] font-semibold px-[14px] py-[10px] cursor-pointer hover:opacity-90 transition-opacity"
+              style={btnStyle}>
+              Proximo
+            </button>
+          )}
         </div>
       )}
 
@@ -411,11 +607,21 @@ export function SubmissionForm({ labelId, labelName }: Props) {
 
           {artistEntries.map((artist, idx) => (
             <div key={idx} className="border border-border rounded-[8px] p-4 flex flex-col gap-3">
-              <p className="text-[13px] font-bold text-text">Artista {idx + 1}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-[13px] font-bold text-text">Artista {idx + 1}</p>
+                {idx > 0 && (
+                  <button type="button"
+                    onClick={() => setArtistEntries(artistEntries.filter((_, i) => i !== idx))}
+                    className="text-[11px] text-text4 hover:text-danger bg-transparent border-none cursor-pointer"
+                    style={{ fontFamily: "inherit" }}>
+                    Remover
+                  </button>
+                )}
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelClass}>Nome artistico</label>
+                  <label className={labelClass}>Nome artistico *</label>
                   <input type="text" value={artist.nomeArtistico}
                     onChange={(e) => { const a = [...artistEntries]; a[idx].nomeArtistico = e.target.value; setArtistEntries(a); }}
                     className={inputClass(idx === 0 ? "artist0name" : undefined)} style={{ fontFamily: "inherit" }} />
@@ -485,8 +691,8 @@ export function SubmissionForm({ labelId, labelName }: Props) {
               className="flex-1 bg-transparent text-neutral border border-[#e0e0de] rounded-[6px] text-[13px] font-semibold py-[8px] cursor-pointer"
               style={{ fontFamily: "inherit" }}>Voltar</button>
             <button type="button" onClick={nextStep}
-              className="flex-1 bg-text text-white border-none rounded-[6px] text-[13px] font-semibold py-[8px] cursor-pointer hover:opacity-90"
-              style={{ fontFamily: "inherit" }}>Proximo</button>
+              className="flex-1 text-white border-none rounded-[6px] text-[13px] font-semibold py-[8px] cursor-pointer hover:opacity-90"
+              style={btnStyle}>Proximo</button>
           </div>
         </div>
       )}
@@ -497,10 +703,23 @@ export function SubmissionForm({ labelId, labelName }: Props) {
           <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em]">
             Royalties share
           </p>
+          <p className="text-[12px] text-text3 -mt-2">
+            Opcional. Informe a divisao de royalties entre os autores.
+          </p>
 
           {royaltyEntries.map((r, idx) => (
             <div key={idx} className="border border-border rounded-[8px] p-4 flex flex-col gap-3">
-              <p className="text-[13px] font-bold text-text">Autor {idx + 1}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-[13px] font-bold text-text">Autor {idx + 1}</p>
+                {idx > 0 && (
+                  <button type="button"
+                    onClick={() => setRoyaltyEntries(royaltyEntries.filter((_, i) => i !== idx))}
+                    className="text-[11px] text-text4 hover:text-danger bg-transparent border-none cursor-pointer"
+                    style={{ fontFamily: "inherit" }}>
+                    Remover
+                  </button>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelClass}>Artista</label>
@@ -539,7 +758,7 @@ export function SubmissionForm({ labelId, labelName }: Props) {
               style={{ fontFamily: "inherit" }}>
               + Adicionar autor
             </button>
-            <span className={`text-[12px] font-bold ${Math.abs(royaltyTotal - 100) < 0.01 ? "text-success" : "text-text3"}`}>
+            <span className={`text-[12px] font-bold ${Math.abs(royaltyTotal - 100) < 0.01 ? "text-success" : royaltyTotal > 0 ? "text-warning" : "text-text3"}`}>
               Total: {royaltyTotal}% / 100%
             </span>
           </div>
@@ -549,8 +768,8 @@ export function SubmissionForm({ labelId, labelName }: Props) {
               className="flex-1 bg-transparent text-neutral border border-[#e0e0de] rounded-[6px] text-[13px] font-semibold py-[8px] cursor-pointer"
               style={{ fontFamily: "inherit" }}>Voltar</button>
             <button type="button" onClick={nextStep}
-              className="flex-1 bg-text text-white border-none rounded-[6px] text-[13px] font-semibold py-[8px] cursor-pointer hover:opacity-90"
-              style={{ fontFamily: "inherit" }}>Revisar</button>
+              className="flex-1 text-white border-none rounded-[6px] text-[13px] font-semibold py-[8px] cursor-pointer hover:opacity-90"
+              style={btnStyle}>Revisar</button>
           </div>
         </div>
       )}
@@ -559,7 +778,7 @@ export function SubmissionForm({ labelId, labelName }: Props) {
       {step === 4 && (
         <div className="flex flex-col gap-4">
           <p className="text-[11px] font-bold text-text3 uppercase tracking-[0.08em]">
-            Revisao
+            Revisao final
           </p>
 
           {/* Summary */}
@@ -575,8 +794,10 @@ export function SubmissionForm({ labelId, labelName }: Props) {
             </div>
             {audioFile && <p className="text-[11px] text-text3">Arquivo: {audioFile.name}</p>}
             {selectedGenres.length > 0 && (
-              <p className="text-[11px] text-text3">Gênero: {selectedGenres.join(", ")}</p>
+              <p className="text-[11px] text-text3">Genero: {selectedGenres.join(", ")}</p>
             )}
+            {bpm && <p className="text-[11px] text-text3">BPM: {bpm}</p>}
+            <p className="text-[11px] text-text3">E-mail: {artistEmail}</p>
           </div>
 
           {/* Artists */}
@@ -584,6 +805,7 @@ export function SubmissionForm({ labelId, labelName }: Props) {
             <div key={i} className="bg-bg2 border border-border rounded-[8px] p-3">
               <p className="text-[13px] font-bold text-text">{a.nomeArtistico}</p>
               {a.nomeCompleto && <p className="text-[11px] text-text3">{a.nomeCompleto}</p>}
+              {a.instagram && <p className="text-[11px] text-text4">IG: {a.instagram}</p>}
             </div>
           ))}
 
@@ -597,14 +819,20 @@ export function SubmissionForm({ labelId, labelName }: Props) {
             </div>
           )}
 
-          {/* LGPD */}
+          {/* LGPD — properly wired */}
           <label className="flex gap-2 items-start cursor-pointer">
-            <input type="checkbox" required className="mt-0.5 flex-shrink-0" style={{ accentColor: "#1a1a1a" }} />
+            <input
+              type="checkbox"
+              checked={lgpdConsent}
+              onChange={(e) => setLgpdConsent(e.target.checked)}
+              className="mt-0.5 flex-shrink-0"
+              style={{ accentColor }}
+            />
             <span className="text-[12px] text-text3 leading-relaxed">
               Concordo com o{" "}
               <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="text-text2 underline">
                 tratamento dos meus dados
-              </a>{" "}conforme a LGPD.
+              </a>{" "}conforme a LGPD. Seus dados serao utilizados exclusivamente para avaliacao da demo.
             </span>
           </label>
 
@@ -612,10 +840,10 @@ export function SubmissionForm({ labelId, labelName }: Props) {
             <button type="button" onClick={() => setStep(3)}
               className="flex-1 bg-transparent text-neutral border border-[#e0e0de] rounded-[6px] text-[13px] font-semibold py-[8px] cursor-pointer"
               style={{ fontFamily: "inherit" }}>Voltar</button>
-            <button type="button" onClick={handleSubmit} disabled={submitting}
-              className={`flex-1 bg-text text-white border-none rounded-[6px] text-[13px] font-semibold py-[10px] cursor-pointer transition-opacity ${submitting ? "opacity-50" : "hover:opacity-90"}`}
-              style={{ fontFamily: "inherit" }}>
-              {submitting ? "Enviando..." : "Salvar e enviar"}
+            <button type="button" onClick={handleSubmit} disabled={submitting || !lgpdConsent}
+              className={`flex-1 text-white border-none rounded-[6px] text-[13px] font-semibold py-[10px] cursor-pointer transition-opacity ${submitting || !lgpdConsent ? "opacity-50" : "hover:opacity-90"}`}
+              style={btnStyle}>
+              {submitting ? "Enviando..." : "Enviar demo"}
             </button>
           </div>
         </div>

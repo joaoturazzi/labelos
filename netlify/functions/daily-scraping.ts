@@ -39,6 +39,16 @@ export const handler = async (event: any, context: any) => {
     });
     console.log("Insights trigger:", insightsRes.status);
 
+    // Trigger radar scan (artist growth monitoring)
+    const radarRes = await fetch(`${appUrl}/api/radar/scan`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(secret ? { "x-cron-secret": secret } : {}),
+      },
+    });
+    console.log("Radar trigger:", radarRes.status);
+
     return {
       statusCode: 200,
       body: JSON.stringify({
@@ -46,6 +56,7 @@ export const handler = async (event: any, context: any) => {
         scraping: scrapingRes.status,
         trending: trendingRes.status,
         insights: insightsRes.status,
+        radar: radarRes.status,
       }),
     };
   } catch (err) {
