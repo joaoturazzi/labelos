@@ -19,6 +19,7 @@ export default function PortalSettingsPage() {
   const [labelName, setLabelName] = useState("");
   const [copied, setCopied] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [portalOpen, setPortalOpen] = useState(true);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const { startUpload: startLogoUpload } = useUploadThing("logoUploader");
@@ -37,6 +38,7 @@ export default function PortalSettingsPage() {
           setLogoUrl(label.logoUrl || "");
           setLabelSlug(label.slug || "");
           setLabelName(label.name || "");
+          setPortalOpen(label.portalOpen ?? true);
         }
       })
       .finally(() => setLoading(false));
@@ -87,6 +89,7 @@ export default function PortalSettingsPage() {
         portalSubtext: portalSubtext || null,
         contactEmail: contactEmail || null,
         logoUrl: logoUrl || null,
+        portalOpen,
       }),
     });
     if (res.ok) {
@@ -313,6 +316,47 @@ export default function PortalSettingsPage() {
             <p className="text-[10px] text-text4 mt-1">
               Exibido no portal para artistas entrarem em contato
             </p>
+          </div>
+
+          {/* Portal open/close toggle */}
+          <div
+            className="flex items-center justify-between rounded-[8px] p-3 mb-3"
+            style={{
+              background: portalOpen ? "#eafaf1" : "#f7f6f3",
+              border: `1px solid ${portalOpen ? "#a9dfbf" : "#eceae5"}`,
+            }}
+          >
+            <div>
+              <p className="text-[13px] font-semibold text-text">
+                Portal {portalOpen ? "aberto" : "fechado"}
+              </p>
+              <p className="text-[11px] text-text3 mt-0.5">
+                {portalOpen
+                  ? "Artistas podem enviar demos agora"
+                  : "Nenhuma nova demo sera aceita"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPortalOpen(!portalOpen)}
+              className="relative border-none cursor-pointer rounded-[12px] transition-colors"
+              style={{
+                width: 44,
+                height: 24,
+                background: portalOpen ? "#1e8449" : "#bbb",
+                padding: 0,
+              }}
+            >
+              <div
+                className="absolute rounded-full bg-white transition-all"
+                style={{
+                  width: 18,
+                  height: 18,
+                  top: 3,
+                  left: portalOpen ? 23 : 3,
+                }}
+              />
+            </button>
           </div>
 
           <button

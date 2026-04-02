@@ -13,6 +13,9 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
+[functions."___netlify-server-handler"]
+  timeout = 60
+
 [[headers]]
   for = "/_next/static/*"
   [headers.values]

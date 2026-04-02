@@ -66,5 +66,6 @@ export const labelSettingsSchema = z.object({
   portalHeadline: z.string().max(200).optional().nullable(),
   portalSubtext: z.string().max(500).optional().nullable(),
   contactEmail: z.string().email().optional().nullable(),
+  portalOpen: z.boolean().optional(),
   onboardingCompleted: z.boolean().optional(),
 });

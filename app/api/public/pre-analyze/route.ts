@@ -69,13 +69,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check size (max 50MB)
+    // Check size — if > 30MB, fall back to metadata-only analysis
     const contentLength = audioRes.headers.get("content-length");
-    if (contentLength && parseInt(contentLength) > 50 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: "Arquivo muito grande para analise (max 50MB)" },
-        { status: 400 }
-      );
+    if (contentLength && parseInt(contentLength) > 30 * 1024 * 1024) {
+      return metadataOnlyAnalysis(trackTitle, genre, bpm, criteria);
     }
 
     const audioBuffer = await audioRes.arrayBuffer();
@@ -185,4 +182,93 @@ Ouca a faixa com atencao e responda APENAS em JSON valido sem markdown:
       { status: 500 }
     );
   }
+}
+
+async function metadataOnlyAnalysis(
+  trackTitle: string | undefined,
+  genre: string | undefined,
+  bpm: string | number | undefined,
+  criteria: Record<string, unknown>
+) {
+  const prompt = `Voce e um produtor musical experiente.
+Com base apenas nos metadados abaixo, de uma analise preliminar.
+Indique claramente que esta e uma analise por metadados, nao por audio.
+
+CRITERIOS DA GRAVADORA: ${JSON.stringify(criteria)}
+TITULO: ${trackTitle || "Nao informado"}
+GENERO: ${genre || "Nao informado"}
+BPM: ${bpm || "Nao informado"}
+
+Responda APENAS em JSON sem markdown:
+{
+  "score": 50,
+  "pronta_para_enviar": false,
+  "resumo_executivo": "Analise baseada apenas em metadados — nao foi possivel processar o audio por ser muito grande. Recomendamos enviar um arquivo menor (ate 30MB) para analise completa.",
+  "pontos_fortes": ["Genero alinhado com o mercado"],
+  "melhorias_necessarias": [
+    {
+      "area": "Arquivo",
+      "problema": "Arquivo muito grande para analise automatica",
+      "sugestao": "Exporte a faixa em MP3 320kbps (geralmente menos de 15MB) para receber analise completa da IA"
+    }
+  ],
+  "genero_detectado": "${genre || "Nao detectado"}",
+  "bpm_estimado": ${bpm ? Number(bpm) : "null"},
+  "energia": "media",
+  "mensagem_para_artista": "Seu arquivo e muito grande para analise automatica. Exporte em MP3 para receber feedback completo!",
+  "proximos_passos": ["Exportar em MP3 320kbps", "Fazer upload novamente", "Receber analise completa da IA"]
+}`;
+
+  try {
+    const response = await fetch(OPENROUTER_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 800,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+
+    const data = await response.json();
+    const raw = data.choices?.[0]?.message?.content || "";
+    const clean = raw.replace(/```json/g, "").replace(/```/g, "").trim();
+    const match = clean.match(/\{[\s\S]*\}/);
+    if (match) {
+      return NextResponse.json({ result: JSON.parse(match[0]) });
+    }
+  } catch (err) {
+    console.error("[pre-analyze] Metadata fallback failed:", err);
+  }
+
+  // Hardcoded fallback if even metadata analysis fails
+  return NextResponse.json({
+    result: {
+      score: 50,
+      pronta_para_enviar: false,
+      resumo_executivo:
+        "Nao foi possivel analisar o audio (arquivo muito grande). Exporte em MP3 320kbps e tente novamente.",
+      pontos_fortes: [],
+      melhorias_necessarias: [
+        {
+          area: "Arquivo",
+          problema: "Arquivo muito grande para analise",
+          sugestao: "Exporte em MP3 320kbps (max 30MB)",
+        },
+      ],
+      genero_detectado: genre || null,
+      bpm_estimado: bpm ? Number(bpm) : null,
+      energia: "media",
+      mensagem_para_artista:
+        "Exporte em MP3 para receber feedback completo da IA!",
+      proximos_passos: [
+        "Exportar em MP3 320kbps",
+        "Fazer upload novamente",
+        "Receber analise completa",
+      ],
+    },
+  });
 }

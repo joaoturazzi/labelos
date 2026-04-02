@@ -23,6 +23,7 @@ export const labels = pgTable("labels", {
   portalHeadline: text("portal_headline"),
   portalSubtext: text("portal_subtext"),
   contactEmail: text("contact_email"),
+  portalOpen: boolean("portal_open").default(true).notNull(),
   // Onboarding
   onboardingCompleted: boolean("onboarding_completed").default(false),
   // Scraping monitoring

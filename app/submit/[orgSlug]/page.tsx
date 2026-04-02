@@ -57,6 +57,31 @@ export default async function SubmitPage({
     );
   }
 
+  if (!label.portalOpen) {
+    return (
+      <div className="min-h-screen bg-bg2 flex items-center justify-center px-4">
+        <div className="bg-bg border border-border rounded-[10px] p-10 max-w-[400px] text-center">
+          <div className="text-[32px] mb-4">&#128274;</div>
+          <p className="text-[18px] font-bold text-text mb-2">
+            Portal temporariamente fechado
+          </p>
+          <p className="text-[13px] text-text3 leading-relaxed">
+            {label.name} nao esta recebendo novas demos no momento.
+            Tente novamente em breve.
+          </p>
+          {label.contactEmail && (
+            <p className="text-[12px] text-text4 mt-4">
+              Contato:{" "}
+              <a href={`mailto:${label.contactEmail}`} className="text-text3 underline">
+                {label.contactEmail}
+              </a>
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const accentColor = label.accentColor || "#1a1a1a";
 
   return (

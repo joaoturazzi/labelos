@@ -213,6 +213,14 @@ export default function PipelinePage() {
     const currentStage = sub.pipelineStage || "triage";
     if (currentStage === newStage) return;
 
+    // Confirm before rejecting
+    if (newStage === "rejected") {
+      const confirmed = window.confirm(
+        `Tem certeza que quer rejeitar "${sub.trackTitle}" de ${sub.artistName}? O artista sera notificado por email.`
+      );
+      if (!confirmed) return;
+    }
+
     // Optimistic update
     setSubmissions((prev) =>
       prev.map((s) =>
