@@ -11,6 +11,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx db/seed.ts",
+    "db:seed-poc": "tsx db/seed-poc.ts",
+    "db:clear-poc": "tsx db/clear-poc.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
