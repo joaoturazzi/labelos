@@ -103,7 +103,9 @@ export async function POST(req: NextRequest) {
       .returning();
 
     // Fire-and-forget: AI analysis
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    // Use the incoming request's origin for server-to-server calls
+    const reqUrl = new URL(req.url);
+    const appUrl = `${reqUrl.protocol}//${reqUrl.host}`;
     fetch(`${appUrl}/api/ai/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -128,12 +130,13 @@ export async function POST(req: NextRequest) {
 
     // Fire-and-forget: notify label owner via email
     if (label.contactEmail) {
+      const publicUrl = process.env.NEXT_PUBLIC_APP_URL || appUrl;
       sendNewSubmissionNotification(
         label.contactEmail,
         data.artistName,
         data.trackTitle,
         label.name,
-        `${appUrl}/dashboard/submissions`
+        `${publicUrl}/dashboard/submissions`
       );
     }
 

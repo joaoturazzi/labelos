@@ -13,7 +13,7 @@ const securityHeaders = [
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https:",
       "media-src 'self' blob: https:",
-      "connect-src 'self' https://*.clerk.accounts.dev https://api.clerk.com https://*.uploadthing.com https://*.ingest.uploadthing.com https://uploadthing.com https://utfs.io https://api.apify.com https://api.firecrawl.dev https://openrouter.ai",
+      "connect-src 'self' https: wss:",
       "worker-src 'self' blob:",
       "frame-src 'self' https://*.clerk.accounts.dev",
     ].join("; "),
