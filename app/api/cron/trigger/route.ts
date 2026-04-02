@@ -9,15 +9,16 @@ import { updateAllTrending } from "@/lib/trending";
 // POST — manual trigger for scraping + trending (local dev)
 export async function POST() {
   try {
-    const { orgId } = await auth();
-    if (!orgId) {
+    const { orgId, userId } = await auth();
+    const ownerId = orgId || userId;
+    if (!ownerId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const [label] = await db
       .select()
       .from(labels)
-      .where(eq(labels.clerkOrgId, orgId))
+      .where(eq(labels.clerkOrgId, ownerId))
       .limit(1);
 
     if (!label) {

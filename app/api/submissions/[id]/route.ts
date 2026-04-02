@@ -7,12 +7,13 @@ import { submissionStatusSchema } from "@/lib/schemas";
 import { sendStatusUpdate } from "@/lib/email";
 
 async function getLabel() {
-  const { orgId } = await auth();
-  if (!orgId) return null;
+  const { orgId, userId } = await auth();
+  const ownerId = orgId || userId;
+  if (!ownerId) return null;
   const [label] = await db
     .select()
     .from(labels)
-    .where(eq(labels.clerkOrgId, orgId))
+    .where(eq(labels.clerkOrgId, ownerId))
     .limit(1);
   return label ?? null;
 }

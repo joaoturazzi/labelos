@@ -5,12 +5,13 @@ import { artists, labels, artistSocials } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 
 async function getLabelId(): Promise<string | null> {
-  const { orgId } = await auth();
-  if (!orgId) return null;
+  const { orgId, userId } = await auth();
+  const ownerId = orgId || userId;
+  if (!ownerId) return null;
   const [label] = await db
     .select()
     .from(labels)
-    .where(eq(labels.clerkOrgId, orgId))
+    .where(eq(labels.clerkOrgId, ownerId))
     .limit(1);
   return label?.id ?? null;
 }

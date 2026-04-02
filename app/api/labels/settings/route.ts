@@ -7,8 +7,9 @@ import { labelSettingsSchema } from "@/lib/schemas";
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { orgId } = await auth();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { orgId, userId } = await auth();
+    const ownerId = orgId || userId;
+    if (!ownerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
     const parsed = labelSettingsSchema.safeParse(body);
@@ -22,7 +23,7 @@ export async function PATCH(req: NextRequest) {
     const [updated] = await db
       .update(labels)
       .set(parsed.data)
-      .where(eq(labels.clerkOrgId, orgId))
+      .where(eq(labels.clerkOrgId, ownerId))
       .returning();
 
     if (!updated) return NextResponse.json({ error: "Label not found" }, { status: 404 });

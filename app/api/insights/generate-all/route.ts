@@ -20,14 +20,15 @@ export async function POST(req: NextRequest) {
       const allLabels = await db.select().from(labels);
       labelIds = allLabels.map((l) => l.id);
     } else {
-      const { orgId } = await auth();
-      if (!orgId) {
+      const { orgId, userId } = await auth();
+      const ownerId = orgId || userId;
+      if (!ownerId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
       const [label] = await db
         .select()
         .from(labels)
-        .where(eq(labels.clerkOrgId, orgId))
+        .where(eq(labels.clerkOrgId, ownerId))
         .limit(1);
       if (!label) {
         return NextResponse.json({ error: "Label not found" }, { status: 404 });

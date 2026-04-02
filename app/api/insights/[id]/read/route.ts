@@ -9,15 +9,16 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { orgId } = await auth();
-    if (!orgId) {
+    const { orgId, userId } = await auth();
+    const ownerId = orgId || userId;
+    if (!ownerId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const [label] = await db
       .select()
       .from(labels)
-      .where(eq(labels.clerkOrgId, orgId))
+      .where(eq(labels.clerkOrgId, ownerId))
       .limit(1);
 
     if (!label) {

@@ -6,10 +6,11 @@ import { eq, desc, and } from "drizzle-orm";
 
 export async function GET() {
   try {
-    const { orgId } = await auth();
-    if (!orgId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { orgId, userId } = await auth();
+    const ownerId = orgId || userId;
+    if (!ownerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const [label] = await db.select().from(labels).where(eq(labels.clerkOrgId, orgId)).limit(1);
+    const [label] = await db.select().from(labels).where(eq(labels.clerkOrgId, ownerId)).limit(1);
     if (!label) return NextResponse.json({ error: "Label not found" }, { status: 404 });
 
     const results = await db
