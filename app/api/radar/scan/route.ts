@@ -15,8 +15,9 @@ export async function POST(req: NextRequest) {
   const isFromCron = cronSecret === process.env.NETLIFY_FUNCTION_SECRET;
 
   if (!isFromCron) {
-    const { orgId } = await auth();
-    if (!orgId) {
+    const { orgId, userId } = await auth();
+    const ownerId = orgId || userId;
+    if (!ownerId) {
       return NextResponse.json({ error: "Nao autorizado" }, { status: 401 });
     }
   }

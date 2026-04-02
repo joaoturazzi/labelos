@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Rss, Music, Users, TrendingUp, BarChart3, Columns3, Settings, Palette, Menu, X, Radio } from "lucide-react";
+import { Rss, Music, Users, TrendingUp, BarChart3, Columns3, Settings, Palette, Menu, X, Radio, LogOut } from "lucide-react";
+import { useClerk } from "@clerk/nextjs";
 
 const navItems = [
   { label: "Feed", href: "/dashboard/feed", icon: Rss },
@@ -23,6 +24,7 @@ const settingsItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { signOut } = useClerk();
 
   const nav = (
     <aside
@@ -105,8 +107,15 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="px-4 py-4 border-t border-border">
-        <p className="text-[11px] text-text4">Gravadora</p>
+      <div className="px-2.5 py-3 border-t border-border">
+        <button
+          onClick={() => signOut({ redirectUrl: "/" })}
+          className="flex items-center gap-2 text-[13px] px-2 py-1.5 rounded-[6px] w-full bg-transparent text-neutral border-none cursor-pointer hover:bg-bg3 transition-colors duration-[120ms]"
+          style={{ fontFamily: "inherit" }}
+        >
+          <LogOut size={16} />
+          Sair
+        </button>
       </div>
     </aside>
   );

@@ -10,12 +10,13 @@ export async function getAuthOrRedirect() {
   return { userId, orgId };
 }
 
-export async function requireOrgId() {
-  const { orgId } = await auth();
+export async function requireOwnerId() {
+  const { orgId, userId } = await auth();
+  const ownerId = orgId || userId;
 
-  if (!orgId) {
-    throw new Error("No organization selected");
+  if (!ownerId) {
+    throw new Error("No authenticated user");
   }
 
-  return orgId;
+  return ownerId;
 }
