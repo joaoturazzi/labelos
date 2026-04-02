@@ -237,6 +237,10 @@ export function SubmissionForm({ labelId, labelName, accentColor = "#1a1a1a" }: 
       alert("Voce precisa concordar com o tratamento de dados para enviar.");
       return;
     }
+    if (audioFile?.url.startsWith("blob:")) {
+      alert("O upload do audio nao foi concluido. Remova o arquivo e envie novamente.");
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/submissions", {

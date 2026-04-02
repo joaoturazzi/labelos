@@ -124,18 +124,21 @@ export default function PortalSettingsPage() {
 
   return (
     <div className="max-w-[820px]">
-      {/* Portal link card — always visible */}
+      {/* Portal link card */}
       {labelSlug && (
         <div
           className="rounded-[8px] p-4 mb-6 flex items-center justify-between gap-4"
-          style={{ background: "#eafaf1", border: "1px solid #a9dfbf" }}
+          style={{
+            background: portalOpen ? "#eafaf1" : "#f7f6f3",
+            border: `1px solid ${portalOpen ? "#a9dfbf" : "#eceae5"}`,
+          }}
         >
           <div className="min-w-0">
             <p
               className="text-[13px] font-bold"
-              style={{ color: "#1e8449" }}
+              style={{ color: portalOpen ? "#1e8449" : "#888" }}
             >
-              Seu portal esta ativo
+              {portalOpen ? "Seu portal esta ativo" : "Portal fechado"}
             </p>
             <p
               className="text-[13px] text-text truncate"
@@ -144,7 +147,9 @@ export default function PortalSettingsPage() {
               {portalUrl}
             </p>
             <p className="text-[11px] text-text3 mt-1">
-              Compartilhe este link com artistas para receber demos
+              {portalOpen
+                ? "Compartilhe este link com artistas para receber demos"
+                : "Ative o portal abaixo para receber demos"}
             </p>
           </div>
           <div className="flex gap-2 flex-shrink-0">

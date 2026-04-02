@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
-import { labels, submissions, radarAlerts, notifications, artistSocials } from "@/db/schema";
+import { labels, submissions, artists, radarAlerts, notifications, artistSocials } from "@/db/schema";
 import { eq, and, gte, desc } from "drizzle-orm";
 import { runApifyActor, APIFY_ACTORS } from "@/lib/apify";
 
@@ -91,6 +91,21 @@ async function checkArtistGrowth(
     message: string;
   }[] = [];
 
+  // Try to find the artist in our DB for historical data lookup
+  const [artist] = submission.artistEmail
+    ? await db
+        .select({ id: artists.id })
+        .from(artists)
+        .where(
+          and(
+            eq(artists.labelId, label.id),
+            eq(artists.email, submission.artistEmail)
+          )
+        )
+        .limit(1)
+    : [undefined];
+  const artistId = artist?.id;
+
   // Check Instagram
   if (submission.instagramUrl) {
     const handle = extractHandle(
@@ -98,7 +113,7 @@ async function checkArtistGrowth(
       /instagram\.com\/([^/?]+)/
     );
     if (handle) {
-      const growth = await scrapeInstagramGrowth(handle);
+      const growth = await scrapeInstagramGrowth(handle, artistId);
       if (growth && growth.growthPercent >= GROWTH_THRESHOLD_7D) {
         alerts.push({
           platform: "Instagram",
@@ -133,7 +148,7 @@ async function checkArtistGrowth(
       /tiktok\.com\/@([^/?]+)/
     );
     if (handle) {
-      const growth = await scrapeTikTokGrowth(handle);
+      const growth = await scrapeTikTokGrowth(handle, artistId);
       if (growth && growth.growthPercent >= GROWTH_THRESHOLD_7D) {
         alerts.push({
           platform: "TikTok",
@@ -147,26 +162,8 @@ async function checkArtistGrowth(
     }
   }
 
-  // Check Spotify
-  if (submission.spotifyUrl) {
-    const spotifyId = extractHandle(
-      submission.spotifyUrl,
-      /spotify\.com\/artist\/([^/?]+)/
-    );
-    if (spotifyId) {
-      const growth = await scrapeSpotifyGrowth(spotifyId);
-      if (growth && growth.growthPercent >= GROWTH_THRESHOLD_7D) {
-        alerts.push({
-          platform: "Spotify",
-          metric: "ouvintes mensais",
-          previousValue: growth.previousValue,
-          currentValue: growth.currentValue,
-          growthPercent: growth.growthPercent,
-          message: `${submission.artistName} cresceu ${growth.growthPercent.toFixed(0)}% em ouvintes mensais no Spotify`,
-        });
-      }
-    }
-  }
+  // Spotify growth detection disabled — no reliable baseline data available
+  // Will be enabled when we store historical monthly listener snapshots
 
   // Save alerts (no duplicates within 48h)
   for (const alert of alerts) {
@@ -217,8 +214,10 @@ async function checkArtistGrowth(
   }
 }
 
-// Scraping functions
-async function scrapeInstagramGrowth(handle: string) {
+// Scraping functions — compare current data with stored snapshots
+// Only reports growth when we have REAL historical data to compare
+
+async function scrapeInstagramGrowth(handle: string, artistId?: string) {
   try {
     const items = await runApifyActor(APIFY_ACTORS.instagram, {
       directUrls: [`https://www.instagram.com/${handle}/`],
@@ -230,18 +229,23 @@ async function scrapeInstagramGrowth(handle: string) {
     if (!profile?.followersCount) return null;
 
     const currentValue = profile.followersCount as number;
+    if (currentValue === 0) return null;
 
-    // Try to find previous snapshot
+    // Find previous snapshot for THIS specific artist
+    const conditions = [eq(artistSocials.platform, "instagram")];
+    if (artistId) conditions.push(eq(artistSocials.artistId, artistId));
+
     const [prev] = await db
       .select({ followers: artistSocials.followers })
       .from(artistSocials)
-      .where(eq(artistSocials.platform, "instagram"))
+      .where(and(...conditions))
       .orderBy(desc(artistSocials.collectedAt))
       .limit(1);
 
-    const previousValue = prev?.followers || currentValue;
-    if (previousValue === 0) return null;
+    // No historical data = can't calculate growth, skip
+    if (!prev?.followers || prev.followers === 0) return null;
 
+    const previousValue = prev.followers;
     const growthPercent =
       ((currentValue - previousValue) / previousValue) * 100;
     return { currentValue, previousValue, growthPercent };
@@ -250,7 +254,7 @@ async function scrapeInstagramGrowth(handle: string) {
   }
 }
 
-async function scrapeTikTokGrowth(handle: string) {
+async function scrapeTikTokGrowth(handle: string, artistId?: string) {
   try {
     const items = await runApifyActor(APIFY_ACTORS.tiktok, {
       profiles: [handle],
@@ -268,8 +272,21 @@ async function scrapeTikTokGrowth(handle: string) {
       (profile.fans as number) || (authorMeta?.fans as number) || 0;
     if (currentValue === 0) return null;
 
-    // Estimate previous value (no historical data available)
-    const previousValue = Math.round(currentValue * 0.85);
+    // Find previous snapshot for THIS specific artist
+    const conditions = [eq(artistSocials.platform, "tiktok")];
+    if (artistId) conditions.push(eq(artistSocials.artistId, artistId));
+
+    const [prev] = await db
+      .select({ followers: artistSocials.followers })
+      .from(artistSocials)
+      .where(and(...conditions))
+      .orderBy(desc(artistSocials.collectedAt))
+      .limit(1);
+
+    // No historical data = can't calculate growth, skip
+    if (!prev?.followers || prev.followers === 0) return null;
+
+    const previousValue = prev.followers;
     const growthPercent =
       ((currentValue - previousValue) / previousValue) * 100;
     return { currentValue, previousValue, growthPercent };
@@ -292,10 +309,10 @@ async function scrapeSpotifyGrowth(spotifyId: string) {
     const currentValue = (artist.monthlyListeners as number) || 0;
     if (currentValue === 0) return null;
 
-    const previousValue = Math.round(currentValue * 0.75);
-    const growthPercent =
-      ((currentValue - previousValue) / previousValue) * 100;
-    return { currentValue, previousValue, growthPercent };
+    // Spotify doesn't have easy previous data in our DB.
+    // Only report if we can detect meaningful change.
+    // For now, skip Spotify growth detection (no reliable baseline).
+    return null;
   } catch {
     return null;
   }
